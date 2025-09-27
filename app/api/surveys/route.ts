@@ -13,8 +13,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const projectId = searchParams.get('projectId')
     
-    const filters = projectId ? { projectId } : undefined
-    const surveys = await database.surveys.findMany(filters)
+    const surveys = await database.surveys.findMany(projectId || undefined)
     
     return NextResponse.json(surveys)
   } catch (error) {
@@ -34,8 +33,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     
     // Validate required fields
-    if (!body.name) {
-      return NextResponse.json({ error: 'Survey name is required' }, { status: 400 })
+    if (!body.title) {
+      return NextResponse.json({ error: 'Survey title is required' }, { status: 400 })
     }
     
     if (!body.projectId) {
@@ -50,7 +49,7 @@ export async function POST(request: NextRequest) {
 
     const survey = await database.surveys.create({
       projectId: body.projectId,
-      name: body.name,
+      title: body.title,
       type: body.type || 'client-project',
       description: body.description || '',
       questions: body.questions || [],

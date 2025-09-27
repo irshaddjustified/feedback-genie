@@ -175,5 +175,8 @@ export const database = {
   }
 }
 
+// Add alias for consistency with plural naming convention used in routes
+;(database as any).organizations = database.organization
+
 // Export the database service as the default export for easy migration from Prisma
 export default database

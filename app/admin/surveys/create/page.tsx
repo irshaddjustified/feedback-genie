@@ -23,7 +23,6 @@ import {
 } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
 import { toast } from 'sonner'
-import { SurveyQRDialog } from '@/components/survey/SurveyQRDialog'
 
 const createSurveySchema = z.object({
   title: z.string().min(1, 'Survey title is required'),
@@ -353,6 +352,59 @@ export default function CreateSurveyPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Success Dialog */}
+      {showSuccessDialog && createdSurvey && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-md mx-4">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                Survey Created Successfully!
+              </CardTitle>
+              <CardDescription>
+                Your survey "{createdSurvey.title}" has been created and is ready for customization.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Survey ID:</Label>
+                <code className="text-sm bg-muted px-2 py-1 rounded block">
+                  {createdSurvey.id}
+                </code>
+              </div>
+              
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Share Link:</Label>
+                <code className="text-sm bg-muted px-2 py-1 rounded block break-all">
+                  {typeof window !== 'undefined' && `${window.location.origin}/feedback/${createdSurvey.shareLink}`}
+                </code>
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowSuccessDialog(false)}
+                  className="flex-1"
+                >
+                  Close
+                </Button>
+                <Button 
+                  onClick={handleContinueToBuilder}
+                  className="flex-1"
+                >
+                  <ArrowRight className="mr-2 h-4 w-4" />
+                  Open Builder
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }

@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const organizations = await database.organizations.findMany()
+    const organizations = await database.organization.findMany()
     return NextResponse.json(organizations)
   } catch (error) {
     console.error('Error fetching organizations:', error)
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Organization name is required' }, { status: 400 })
     }
 
-    const organization = await database.organizations.create({
+    const organization = await database.organization.create({
       name: body.name,
       description: body.description || ''
     })
