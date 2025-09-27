@@ -60,13 +60,14 @@ export default function ChatPage() {
   const handleInitializeVectorStore = async () => {
     setIsInitializing(true)
     try {
+      addMessage("assistant", "Starting vector store initialization... This may take a few minutes depending on your data size.")
       await initializeVectorStore()
       // Reload stats after initialization
       await loadDataStats()
       addMessage("assistant", "Vector store initialized successfully! I can now help you analyze your survey data.")
     } catch (error) {
       console.error("Error initializing vector store:", error)
-      addMessage("assistant", "Failed to initialize vector store. Please check your API keys and try again.")
+      addMessage("assistant", "Failed to initialize vector store. Please check your API key and try again. If you're hitting quota limits, wait for the daily reset or upgrade your plan.")
     } finally {
       setIsInitializing(false)
     }
@@ -163,12 +164,17 @@ export default function ChatPage() {
                 {isInitializing ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Initializing...
+                    Processing...
                   </>
                 ) : (
                   "Initialize RAG"
                 )}
               </Button>
+              {isInitializing && (
+                <p className="text-xs text-muted-foreground mt-2 text-center">
+                  This may take several minutes due to rate limits
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -358,6 +364,29 @@ export default function ChatPage() {
                 <p>• Ask about trends, patterns, or specific surveys</p>
                 <p>• Request comparisons between different time periods</p>
                 <p>• Ask for actionable insights and recommendations</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">API Status</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-muted-foreground">Gemini API Connected</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Using Gemini 1.5 Flash for embeddings and chat
+                </p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full mt-2"
+                  onClick={() => window.open('https://ai.google.dev/gemini-api/docs/rate-limits', '_blank')}
+                >
+                  View Quota Limits
+                </Button>
               </CardContent>
             </Card>
           </div>

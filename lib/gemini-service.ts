@@ -3,14 +3,14 @@ import { collection, addDoc, query, where, orderBy, getDocs, limit } from "fireb
 import { db } from "./firebase"
 
 // Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || "")
+const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || "AIzaSyC46vrpQZUXXcCe94K0393K3u-G8HOqE_c")
 
 // Get the embedding model
 const embeddingModel = genAI.getGenerativeModel({ model: "embedding-001" })
 
 // Get the chat model
 const chatModel = genAI.getGenerativeModel({ 
-  model: "gemini-1.5-flash",
+  model: "gemini-2.0-flash",
   generationConfig: {
     temperature: 0.7,
     topK: 40,
@@ -40,15 +40,35 @@ export interface ChatResponse {
   sources: string[]
 }
 
-// Generate embeddings for text
-export async function generateEmbedding(text: string): Promise<number[]> {
-  try {
-    const result = await embeddingModel.embedContent(text)
-    return result.embedding.values
-  } catch (error) {
-    console.error("Error generating embedding:", error)
-    throw new Error("Failed to generate embedding")
+// Rate limiting helper
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+// Generate embeddings for text with retry logic
+export async function generateEmbedding(text: string, retries: number = 3): Promise<number[]> {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const result = await embeddingModel.embedContent(text)
+      return result.embedding.values
+    } catch (error: any) {
+      console.error(`Error generating embedding (attempt ${attempt}):`, error)
+      
+      if (error.status === 429) {
+        // Rate limit hit - wait longer for subsequent attempts
+        const waitTime = Math.pow(2, attempt) * 2000 // Exponential backoff: 2s, 4s, 8s
+        console.log(`Rate limit hit. Waiting ${waitTime}ms before retry...`)
+        await delay(waitTime)
+        continue
+      }
+      
+      if (attempt === retries) {
+        throw new Error(`Failed to generate embedding after ${retries} attempts: ${error.message}`)
+      }
+      
+      // For other errors, wait a bit before retrying
+      await delay(1000)
+    }
   }
+  throw new Error("Failed to generate embedding")
 }
 
 // Store vector document in Firestore
@@ -131,6 +151,7 @@ function cosineSimilarity(a: number[], b: number[]): number {
   return dotProduct / (normA * normB)
 }
 
+
 // Initialize vector store with existing survey data
 export async function initializeVectorStore(): Promise<void> {
   try {
@@ -145,7 +166,8 @@ export async function initializeVectorStore(): Promise<void> {
     }
 
     let processedCount = 0
-    const batchSize = 10 // Process in batches to avoid rate limits
+    const batchSize = 3 // Very conservative batch size for free tier
+    const delayBetweenRequests = 5000 // 5 seconds between each request (well under 15 RPM limit)
 
     for (const responseDoc of responsesSnapshot.docs) {
       const responseData = responseDoc.data()
@@ -157,7 +179,7 @@ export async function initializeVectorStore(): Promise<void> {
           const content = `Survey: ${responseData.surveyName}\nQuestion: ${questionId}\nAnswer: ${answer}`
           
           try {
-            // Generate embedding
+            // Generate embedding with retry logic
             const embedding = await generateEmbedding(content)
             
             // Store vector document
@@ -177,13 +199,20 @@ export async function initializeVectorStore(): Promise<void> {
             })
             
             processedCount++
+            console.log(`Processed ${processedCount} documents...`)
             
-            // Add delay to avoid rate limits
+            // Add delay between each request to avoid rate limits
+            await delay(delayBetweenRequests)
+            
+            // Additional delay after each batch
             if (processedCount % batchSize === 0) {
-              await new Promise(resolve => setTimeout(resolve, 1000))
+              console.log(`Completed batch of ${batchSize}. Taking a longer break...`)
+              await delay(10000) // 10 second break after each batch to stay well under limits
             }
           } catch (error) {
             console.error(`Error processing response ${responseDoc.id}, question ${questionId}:`, error)
+            // Continue with next document even if one fails
+            await delay(1000) // Still wait a bit before continuing
           }
         }
       }
@@ -199,7 +228,7 @@ export async function initializeVectorStore(): Promise<void> {
 // Chat with survey data using RAG
 export async function chatWithSurveyData(userQuery: string): Promise<ChatResponse> {
   try {
-    // Generate embedding for user query
+    // Generate embedding for user query with retry logic
     const queryEmbedding = await generateEmbedding(userQuery)
     
     // Search for relevant documents
@@ -237,10 +266,35 @@ Instructions:
 
 Answer:`
 
-    // Get response from Gemini
-    const result = await chatModel.generateContent(prompt)
-    const response = await result.response
-    const content = response.text()
+    // Get response from Gemini with retry logic
+    let content = ""
+    let attempts = 0
+    const maxAttempts = 3
+    
+    while (attempts < maxAttempts) {
+      try {
+        const result = await chatModel.generateContent(prompt)
+        const response = await result.response
+        content = response.text()
+        break
+      } catch (error: any) {
+        attempts++
+        console.error(`Error getting chat response (attempt ${attempts}):`, error)
+        
+        if (error.status === 429) {
+          const waitTime = Math.pow(2, attempts) * 1000 // Exponential backoff
+          console.log(`Rate limit hit. Waiting ${waitTime}ms before retry...`)
+          await delay(waitTime)
+          continue
+        }
+        
+        if (attempts === maxAttempts) {
+          throw new Error(`Failed to get chat response after ${maxAttempts} attempts: ${error.message}`)
+        }
+        
+        await delay(1000)
+      }
+    }
 
     return {
       content,
