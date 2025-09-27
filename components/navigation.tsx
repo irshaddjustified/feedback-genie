@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { BarChart3, FileText, Settings, Sparkles } from "lucide-react"
+import { BarChart3, FileText, Settings, Sparkles, MessageCircle } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 export function Navigation() {
@@ -24,6 +24,11 @@ export function Navigation() {
       href: "/surveys",
       label: "Surveys",
       icon: FileText,
+    },
+    {
+      href: "/chat",
+      label: "Chat",
+      icon: MessageCircle,
     },
   ]
 
