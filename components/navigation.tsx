@@ -14,7 +14,8 @@ import {
   FolderOpen,
   Users,
   Building,
-  Wrench
+  Wrench,
+  MessageCircle
 } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import {
@@ -51,6 +52,11 @@ export function Navigation({ hideAdminElements = false }: NavigationProps) {
       label: "Home",
       icon: Sparkles,
       show: true
+    },
+    {
+      href: "/chat",
+      label: "Chat",
+      icon: MessageCircle,
     },
   ]
 
