@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { mockResponses, mockSurveys } from "@/lib/mock-data"
 import { generateInsights } from "@/lib/ai-service"
-import { BarChart3, FileText, TrendingUp, Users, Eye, Sparkles, Settings } from "lucide-react"
+import { BarChart3, FileText, TrendingUp, Users, Eye, Sparkles, Settings, MessageCircle } from "lucide-react"
 import Link from "next/link"
 
 export default function Dashboard() {
@@ -190,6 +190,12 @@ export default function Dashboard() {
                   <Sparkles className="h-4 w-4 mr-2" />
                   {isPending ? "Generating..." : "AI Analysis"}
                 </Button>
+                <Link href="/chat">
+                  <Button variant="outline">
+                    <MessageCircle className="h-4 w-4 mr-2" />
+                    Chat with Data
+                  </Button>
+                </Link>
               </div>
             </CardContent>
           </Card>
