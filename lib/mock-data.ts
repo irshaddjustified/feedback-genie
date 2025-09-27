@@ -85,21 +85,29 @@ export const surveyTemplates: SurveyTemplate[] = [
 export const mockSurveys: Survey[] = [
   {
     id: "1",
+    projectId: "project-1",
     name: "Q4 Client Project Review",
     type: "client-project",
     description: "Feedback collection for Q4 client projects",
     questions: surveyTemplates[0].questions.map((q, i) => ({ ...q, id: `q${i + 1}` })),
     isActive: true,
+    shareLink: "q4-client-project-review",
+    status: "ACTIVE",
     createdAt: new Date("2024-01-15"),
+    updatedAt: new Date("2024-01-15"),
   },
   {
     id: "2",
+    projectId: "project-2", 
     name: "Annual Tech Conference 2024",
     type: "event-feedback",
     description: "Post-event feedback for our annual conference",
     questions: surveyTemplates[1].questions.map((q, i) => ({ ...q, id: `q${i + 1}` })),
     isActive: true,
+    shareLink: "annual-tech-conference-2024",
+    status: "ACTIVE",
     createdAt: new Date("2024-01-20"),
+    updatedAt: new Date("2024-01-20"),
   },
 ]
 
