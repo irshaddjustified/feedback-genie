@@ -28,7 +28,7 @@ export default function PreviewPage() {
   }, [router])
 
   if (!surveyData) {
-    return <div>Loading...</div>
+    return <div>Loading.....</div>
   }
 
   const handleInputChange = (questionId: string, value: any) => {
