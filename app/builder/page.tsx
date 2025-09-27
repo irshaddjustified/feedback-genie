@@ -15,6 +15,9 @@ import { generateSurveyFromPrompt } from "@/lib/ai-service"
 import type { Question, SurveyTemplate } from "@/lib/types"
 import { Plus, Trash2, Sparkles, Save, Eye } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { db } from "@/lib/firebase"
+import { addDoc, collection } from "firebase/firestore"
+import { v4 as uuidv4 } from 'uuid';
 
 export default function FormBuilder() {
   const router = useRouter()
@@ -25,6 +28,66 @@ export default function FormBuilder() {
   const [questions, setQuestions] = useState<Question[]>([])
   const [aiPrompt, setAiPrompt] = useState("")
   const [isPending, startTransition] = useTransition()
+  const [isSaving, setIsSaving] = useState(false)
+  const [authRequired, setAuthRequired] = useState(false)
+  const [errors, setErrors] = useState<{
+    surveyName?: string
+    surveyDescription?: string
+    questions?: Record<string, { text?: string; options?: string }>
+  }>({})
+
+  const validateForm = () => {
+    const newErrors: {
+      surveyName?: string
+      surveyDescription?: string
+      questions?: Record<string, { text?: string; options?: string }>
+    } = {}
+
+    if (!surveyName.trim()) {
+      newErrors.surveyName = "Survey name is required"
+    }
+
+    if (!surveyDescription.trim()) {
+      newErrors.surveyDescription = "Description is required"
+    }
+
+    const qErrors: Record<string, { text?: string; options?: string }> = {}
+    questions.forEach((q) => {
+      const qe: { text?: string; options?: string } = {}
+      if (!q.text?.trim()) {
+        qe.text = "Question text is required"
+      }
+      if (q.type === "select" || q.type === "radio" || q.type === "checkbox") {
+        const opts = q.options || []
+        if (opts.length === 0) {
+          qe.options = "At least one option is required"
+        }
+      }
+      if (Object.keys(qe).length > 0) {
+        qErrors[q.id] = qe
+      }
+    })
+
+    if (Object.keys(qErrors).length > 0) {
+      newErrors.questions = qErrors
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const formHasBlockingIssues = () => {
+    if (!surveyName.trim()) return true
+    if (!surveyDescription.trim()) return true
+    if (questions.length === 0) return true
+    for (const q of questions) {
+      if (!q.text?.trim()) return true
+      if ((q.type === "select" || q.type === "radio" || q.type === "checkbox") && (!q.options || q.options.length === 0)) {
+        return true
+      }
+    }
+    return false
+  }
 
   const handleTemplateSelect = (template: SurveyTemplate) => {
     setSelectedTemplate(template)
@@ -69,15 +132,49 @@ export default function FormBuilder() {
     setQuestions(questions.filter((q) => q.id !== id))
   }
 
-  const handleSave = () => {
+  const handleSave = async (e: React.FormEvent) => {
     // In a real app, this would save to the database
-    console.log("Saving survey:", { surveyName, surveyDescription, surveyType, questions })
-    alert("Survey saved successfully!")
+    const uid = uuidv4();
+
+    // Validate before proceeding
+    const ok = validateForm()
+    if (!ok) {
+      return
+    }
+
+    setIsSaving(true);
+
+    try {
+      const surveyData = {
+        id: uid,
+        surveyName: surveyName,
+        surveyDescription: surveyDescription,
+        surveyType: surveyType,
+        questions: questions,
+        createdAt: new Date(),
+        authenticationRequired: authRequired,
+      }
+
+      const docRef = await addDoc(collection(db, "surveys"), surveyData);
+      console.log('Survey saved with ID:', docRef.id);
+      console.log("Saving survey:", { surveyName, surveyDescription, surveyType, questions })
+      
+      // Redirect to survey page after successful save
+      router.push("/surveys");
+      
+      return docRef.id;
+    } catch (error) {
+      console.error('Error saving survey:', error);
+      alert("Error saving survey. Please try again.");
+      throw error;
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   const handlePreview = () => {
     // Store survey data in localStorage for preview
-    const surveyData = { surveyName, surveyDescription, surveyType, questions }
+    const surveyData = { surveyName, surveyDescription, surveyType, questions, authenticationRequired: authRequired }
     localStorage.setItem("previewSurvey", JSON.stringify(surveyData))
     router.push("/preview")
   }
@@ -181,6 +278,9 @@ export default function FormBuilder() {
                     onChange={(e) => setSurveyName(e.target.value)}
                     placeholder="Enter survey name"
                   />
+                  {errors.surveyName && (
+                    <p className="text-sm text-red-500 mt-1">{errors.surveyName}</p>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="survey-description">Description</Label>
@@ -190,6 +290,17 @@ export default function FormBuilder() {
                     onChange={(e) => setSurveyDescription(e.target.value)}
                     placeholder="Describe the purpose of this survey"
                   />
+                  {errors.surveyDescription && (
+                    <p className="text-sm text-red-500 mt-1">{errors.surveyDescription}</p>
+                  )}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="auth-required"
+                    checked={authRequired}
+                    onCheckedChange={(checked) => setAuthRequired(!!checked)}
+                  />
+                  <Label htmlFor="auth-required">Authentication required</Label>
                 </div>
               </div>
 
@@ -240,15 +351,17 @@ export default function FormBuilder() {
                         />
                         <Label htmlFor={`required-${question.id}`}>Required</Label>
                       </div>
-                    </div>
-
                     <div>
                       <Label>Question Text</Label>
                       <Input
                         value={question.text}
                         onChange={(e) => updateQuestion(question.id, { text: e.target.value })}
                         placeholder="Enter your question"
+                        className={errors.questions?.[question.id]?.text ? "border-red-500" : ""}
                       />
+                      {errors.questions?.[question.id]?.text && (
+                        <p className="text-sm text-red-500 mt-1">{errors.questions?.[question.id]?.text}</p>
+                      )}
                     </div>
 
                     {(question.type === "select" || question.type === "radio" || question.type === "checkbox") && (
@@ -262,18 +375,23 @@ export default function FormBuilder() {
                             })
                           }
                           placeholder="Option 1&#10;Option 2&#10;Option 3"
+                          className={errors.questions?.[question.id]?.options ? "border-red-500" : ""}
                         />
+                        {errors.questions?.[question.id]?.options && (
+                          <p className="text-sm text-red-500 mt-1">{errors.questions?.[question.id]?.options}</p>
+                        )}
                       </div>
                     )}
                   </div>
-                ))}
+                </div>
+              ))}
               </div>
 
               {/* Actions */}
               <div className="flex space-x-4 pt-6 border-t">
-                <Button onClick={handleSave} disabled={!surveyName || questions.length === 0}>
+                <Button onClick={handleSave} disabled={formHasBlockingIssues() || isSaving}>
                   <Save className="h-4 w-4 mr-2" />
-                  Save Survey
+                  {isSaving ? "Saving..." : "Save Survey"}
                 </Button>
                 <Button variant="outline" onClick={handlePreview} disabled={!surveyName || questions.length === 0}>
                   <Eye className="h-4 w-4 mr-2" />

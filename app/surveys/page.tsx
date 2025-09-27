@@ -4,56 +4,63 @@ import { Navigation } from "@/components/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Eye, BarChart3, Calendar, ExternalLink, Loader2 } from "lucide-react"
+import { Eye, BarChart3, Calendar, ExternalLink } from "lucide-react"
 import Link from "next/link"
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { apiClient } from "@/lib/api-client"
-import { toast } from "sonner"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation";
+import { db } from "@/lib/firebase"
+import { collection, getDocs } from "firebase/firestore"
 
 export default function SurveysPage() {
-  const router = useRouter()
-  const [requiredAuth, setrequiredAuth] = useState<any>(true)
+  const router = useRouter();
   const [surveys, setSurveys] = useState<any[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
   const [responses, setResponses] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const loadData = async () => {
+    const fetchSurveys = async () => {
       try {
-        setLoading(true)
-        const [surveysData, responsesData] = await Promise.all([
-          apiClient.surveys.getAll(),
-          apiClient.responses.getAll()
-        ])
-        setSurveys(surveysData)
-        setResponses(responsesData)
-      } catch (error) {
-        console.error('Failed to load surveys:', error)
-        toast.error('Failed to load surveys')
+        const snap = await getDocs(collection(db, "surveys"))
+        const list = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+        setSurveys(list)
+      } catch (e) {
+        console.error("Failed to load surveys:", e)
       } finally {
         setLoading(false)
       }
     }
-    loadData()
+    fetchSurveys()
   }, [])
 
-  const getSurveyStats = (surveyId: string) => {
-    const surveyResponses = responses.filter((r) => r.surveyId === surveyId)
-    const positiveCount = surveyResponses.filter((r) => 
-      r.aiAnalysis?.sentimentLabel === 'POSITIVE' || r.aiAnalysis?.sentimentLabel === 'VERY_POSITIVE'
-    ).length
+  useEffect(() => {
+    const fetchResponses = async () => {
+      try {
+        const snap = await getDocs(collection(db, "responses"))
+        const list = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+        setResponses(list)
+      } catch (e) {
+        console.error("Failed to load responses:", e)
+      }
+    }
+    fetchResponses()
+  }, [])
+
+  const getSurveyStats = (_surveyId: string) => {
+    const list = responses.filter((r) => r.surveyId === _surveyId)
+    const positiveCount = list.filter((r) => r.sentiment === "positive").length
     return {
-      totalResponses: surveyResponses.length,
-      positiveRate: surveyResponses.length > 0 ? Math.round((positiveCount / surveyResponses.length) * 100) : 0,
+      totalResponses: list.length,
+      positiveCount,
+      positiveRate: list.length > 0 ? Math.round((positiveCount / list.length) * 100) : 0,
     }
   }
 
-  const handleClick = async (surveyId: any) => {
-    if (requiredAuth) {
-      router.push(`/public/auth?redirect=${encodeURIComponent(`/public/${surveyId}`)}`);
+  const handleClick = async (survey: any) => {
+    const requiresAuth = !!survey.authenticationRequired
+    if (requiresAuth) {
+      router.push(`/public/auth?redirect=${encodeURIComponent(`/public/${survey.id}`)}`);
     } else {
-      router.push(`/public/${surveyId}`);
+      router.push(`/public/${survey.id}`);
     }
   };
 
@@ -68,37 +75,37 @@ export default function SurveysPage() {
               <h1 className="text-3xl font-bold text-foreground mb-2">Surveys</h1>
               <p className="text-muted-foreground">Manage and monitor your feedback collection</p>
             </div>
-            <Link href="/admin/surveys/create">
+            <Link href="/builder">
               <Button>Create New Survey</Button>
             </Link>
           </div>
         </div>
 
         {loading ? (
-          <div className="text-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading surveys...</p>
-          </div>
+          <Card>
+            <CardContent className="text-center py-12">Loading surveys...</CardContent>
+          </Card>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {surveys.map((survey) => {
-              const stats = getSurveyStats(survey.id)
+              const stats = getSurveyStats(survey.id as string)
               return (
-                <Card key={survey.id}>
+                <Card key={survey.id as string}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <CardTitle className="text-lg mb-2">{survey.title || survey.name || 'Untitled Survey'}</CardTitle>
-                        <CardDescription className="mb-3">{survey.description || 'No description provided'}</CardDescription>
+                        <CardTitle className="text-lg mb-2">{survey.surveyName}</CardTitle>
+                        <CardDescription className="mb-3">{survey.surveyDescription}</CardDescription>
                         <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                           <div className="flex items-center space-x-1">
                             <Calendar className="h-4 w-4" />
-                            <span>{survey.createdAt ? new Date(survey.createdAt).toLocaleDateString() : 'N/A'}</span>
+                            <span>{
+                              // createdAt may be a Date or Firestore Timestamp
+                              survey.createdAt?.toDate ? survey.createdAt.toDate().toLocaleDateString() :
+                              survey.createdAt ? new Date(survey.createdAt).toLocaleDateString() : ""
+                            }</span>
                           </div>
-                          <Badge variant={survey.status === 'PUBLISHED' ? "default" : "secondary"}>
-                            {survey.status || 'DRAFT'}
-                          </Badge>
-                          <Badge variant="outline">{survey.type || 'CUSTOM'}</Badge>
+                          <Badge variant="outline">{survey.surveyType}</Badge>
                         </div>
                       </div>
                     </div>
@@ -123,24 +130,22 @@ export default function SurveysPage() {
 
                       {/* Actions */}
                       <div className="flex space-x-2 pt-4 border-t">
-                        <Link href={`/admin/surveys/${survey.id}/builder`} className="flex-1">
+                        <Link href={`/survey/${survey.id}`} className="flex-1">
                           <Button variant="outline" className="w-full bg-transparent">
                             <Eye className="h-4 w-4 mr-2" />
-                            Edit Survey
+                            View Details
                           </Button>
                         </Link>
-                        <Link href={`/admin/surveys/${survey.id}/responses`} className="flex-1">
+                        {/* <Link href={`/survey/${survey.id}/responses`} className="flex-1">
                           <Button variant="outline" className="w-full bg-transparent">
                             <BarChart3 className="h-4 w-4 mr-2" />
                             Analytics
                           </Button>
-                        </Link>
-                        <Link href={`/feedback/${survey.shareLink}`} target="_blank" className="flex-1">
-                          <Button className="w-full">
-                            <ExternalLink className="h-4 w-4 mr-2" />
-                            Public Link
-                          </Button>
-                        </Link>
+                        </Link> */}
+                        <Button className="w-full flex-1" onClick={() => handleClick(survey)}>
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          Public Link
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -157,7 +162,7 @@ export default function SurveysPage() {
               <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">No surveys yet</h3>
               <p className="text-muted-foreground mb-4">Create your first survey to start collecting feedback</p>
-              <Link href="/admin/surveys/create">
+              <Link href="/builder">
                 <Button>Create Survey</Button>
               </Link>
             </CardContent>

@@ -167,8 +167,8 @@ export default function PublicSurvey() {
         return (
           <Input
             value={value || ""}
-            onChange={(e) => handleInputChange(question.id, e.target.value)}
             placeholder="Your answer"
+            readOnly
           />
         )
 
@@ -176,21 +176,21 @@ export default function PublicSurvey() {
         return (
           <Textarea
             value={value || ""}
-            onChange={(e) => handleInputChange(question.id, e.target.value)}
             placeholder="Your answer"
             className="min-h-[100px]"
+            readOnly
           />
         )
 
       case "select":
         return (
-          <Select value={value || ""} onValueChange={(val) => handleInputChange(question.id, val)}>
-            <SelectTrigger>
+          <Select value={value || ""} onValueChange={() => {}}>
+            <SelectTrigger className="pointer-events-none opacity-70">
               <SelectValue placeholder="Select an option" />
             </SelectTrigger>
             <SelectContent>
               {question.options?.map((option) => (
-                <SelectItem key={option} value={option}>
+                <SelectItem key={option} value={option} disabled>
                   {option}
                 </SelectItem>
               ))}
@@ -200,10 +200,10 @@ export default function PublicSurvey() {
 
       case "radio":
         return (
-          <RadioGroup value={value || ""} onValueChange={(val) => handleInputChange(question.id, val)}>
+          <RadioGroup value={value || ""} onValueChange={() => {}}>
             {question.options?.map((option) => (
               <div key={option} className="flex items-center space-x-2">
-                <RadioGroupItem value={option} id={`${question.id}-${option}`} />
+                <RadioGroupItem value={option} id={`${question.id}-${option}`} disabled />
                 <Label htmlFor={`${question.id}-${option}`}>{option}</Label>
               </div>
             ))}
@@ -218,17 +218,8 @@ export default function PublicSurvey() {
                 <Checkbox
                   id={`${question.id}-${option}`}
                   checked={(value || []).includes(option)}
-                  onCheckedChange={(checked) => {
-                    const currentValues = value || []
-                    if (checked) {
-                      handleInputChange(question.id, [...currentValues, option])
-                    } else {
-                      handleInputChange(
-                        question.id,
-                        currentValues.filter((v: string) => v !== option),
-                      )
-                    }
-                  }}
+                  onCheckedChange={() => {}}
+                  disabled
                 />
                 <Label htmlFor={`${question.id}-${option}`}>{option}</Label>
               </div>
@@ -238,11 +229,11 @@ export default function PublicSurvey() {
 
       case "rating":
         return (
-          <RadioGroup value={value || ""} onValueChange={(val) => handleInputChange(question.id, val)}>
+          <RadioGroup value={value || ""} onValueChange={() => {}}>
             <div className="flex space-x-4">
               {question.options?.map((option) => (
                 <div key={option} className="flex flex-col items-center space-y-2">
-                  <RadioGroupItem value={option} id={`${question.id}-${option}`} />
+                  <RadioGroupItem value={option} id={`${question.id}-${option}`} disabled />
                   <Label htmlFor={`${question.id}-${option}`} className="text-sm">
                     {option}
                   </Label>
@@ -321,18 +312,8 @@ export default function PublicSurvey() {
               ))}
 
               <div className="pt-6 border-t">
-                <Button type="submit" className="w-full" disabled={isSubmitting} size="lg">
-                  {isSubmitting ? (
-                    <>
-                      <Sparkles className="h-4 w-4 mr-2 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="h-4 w-4 mr-2" />
-                      Submit Feedback
-                    </>
-                  )}
+                <Button type="button" className="w-full" size="lg" onClick={() => router.push('/surveys')}>
+                  Go back
                 </Button>
               </div>
             </form>
