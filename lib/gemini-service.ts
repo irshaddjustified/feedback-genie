@@ -3,7 +3,7 @@ import { collection, addDoc, query, where, orderBy, getDocs, limit } from "fireb
 import { db } from "./firebase"
 
 // Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || "AIzaSyC46vrpQZUXXcCe94K0393K3u-G8HOqE_c")
+const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY )
 
 // Get the embedding model
 const embeddingModel = genAI.getGenerativeModel({ model: "embedding-001" })
