@@ -23,6 +23,7 @@ import Link from 'next/link'
 import { apiClient } from '@/lib/api-client'
 import { toast } from 'sonner'
 import { useAuth } from '@/lib/contexts/AuthContext'
+import { Navigation } from '@/components/navigation'
 
 export default function AdminDashboard() {
   const { user, loading } = useAuth()
@@ -221,13 +222,14 @@ export default function AdminDashboard() {
         {/* Header */}
         <div className="border-b">
           <div className="flex h-16 items-center justify-between px-6">
-            <div>
+            <Navigation />
+            {/* <div>
               <h1 className="text-2xl font-bold">Feedback Dashboard</h1>
               <p className="text-sm text-muted-foreground">
                 Welcome back, {user.displayName || user.email}
               </p>
-            </div>
-            <div className="flex items-center gap-3">
+            </div> */}
+            {/* <div className="flex items-center gap-3">
               <Button asChild variant="outline">
                 <Link href="/admin/clients">
                   <Users className="h-4 w-4 mr-2" />
@@ -246,7 +248,7 @@ export default function AdminDashboard() {
                   Chat
                 </Link>
               </Button>
-            </div>
+            </div> */}
           </div>
         </div>
 

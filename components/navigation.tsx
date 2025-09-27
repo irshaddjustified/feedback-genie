@@ -80,18 +80,18 @@ export function Navigation({ hideAdminElements = false }: NavigationProps) {
       }
     ]
 
-    if (canViewAnalytics) {
-      navItems.push({
-        href: "/admin/analytics",
-        label: "Analytics",
-        icon: BarChart3,
-        show: true
-      })
-    }
+    // if (canViewAnalytics) {
+    //   navItems.push({
+    //     href: "/admin/analytics",
+    //     label: "Analytics",
+    //     icon: BarChart3,
+    //     show: true
+    //   })
+    // }
 
     if (canManageSurveys) {
       navItems.push({
-        href: "/admin/surveys",
+        href: "/surveys",
         label: "Surveys",
         icon: FileText,
         show: true
@@ -131,6 +131,13 @@ export function Navigation({ hideAdminElements = false }: NavigationProps) {
         show: true
       })
     }
+
+    navItems.push({
+      href: "/chat",
+      label: "Chat",
+      icon: MessageCircle,
+      show: true
+    })
 
     return navItems.filter(item => item.show)
   }
