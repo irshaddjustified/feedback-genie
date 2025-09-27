@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { Suspense } from "react"
 import { ThemeProvider } from "@/components/theme-provider"
+import { Providers } from "@/components/providers"
 
 const geistSans = Geist({
   subsets: ["latin"],
@@ -30,12 +31,14 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <body className="font-sans antialiased">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <Suspense>
-            {children}
-            <Analytics />
-          </Suspense>
-        </ThemeProvider>
+        <Providers>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+            <Suspense>
+              {children}
+              <Analytics />
+            </Suspense>
+          </ThemeProvider>
+        </Providers>
       </body>
     </html>
   )

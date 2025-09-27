@@ -1,0 +1,61 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "functions": {
+    "app/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  },
+  "env": {
+    "NEXT_PUBLIC_APP_URL": "@feedback-genie-app-url",
+    "DATABASE_URL": "@feedback-genie-database-url",
+    "DIRECT_URL": "@feedback-genie-direct-url",
+    "NEXTAUTH_SECRET": "@feedback-genie-nextauth-secret",
+    "NEXTAUTH_URL": "@feedback-genie-nextauth-url",
+    "OPENAI_API_KEY": "@feedback-genie-openai-key",
+    "ANTHROPIC_API_KEY": "@feedback-genie-anthropic-key",
+    "GOOGLE_GEMINI_KEY": "@feedback-genie-gemini-key",
+    "ADMIN_EMAIL": "@feedback-genie-admin-email",
+    "ADMIN_PASSWORD": "@feedback-genie-admin-password"
+  },
+  "build": {
+    "env": {
+      "NEXT_PUBLIC_APP_URL": "@feedback-genie-app-url"
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/admin",
+      "destination": "/admin/dashboard",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/socket.io/(.*)",
+      "destination": "/api/socket.io/$1"
+    }
+  ]
+}
