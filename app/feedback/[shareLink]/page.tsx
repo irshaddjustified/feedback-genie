@@ -109,11 +109,11 @@ export default function PublicFeedbackPage() {
   // Authentication functions
   const handleGoogleSignIn = async () => {
     try {
-      const result = await authHelpers.signInWithGoogle()
-      setFirebaseUser(result.user)
+      const user = await authHelpers.signInWithGoogle()
+      setFirebaseUser(user)
       setRespondentInfo({
-        name: result.user.displayName || '',
-        email: result.user.email || ''
+        name: user?.displayName || '',
+        email: user?.email || ''
       })
       setShowAuthOptions(false)
       toast.success('Signed in with Google!')
@@ -124,8 +124,8 @@ export default function PublicFeedbackPage() {
 
   const handleAnonymousAccess = async () => {
     try {
-      const result = await authHelpers.signInAnonymously()
-      setFirebaseUser(result.user)
+      const user = await authHelpers.signInAnonymously()
+      setFirebaseUser(user)
       setShowAuthOptions(false)
       toast.success('Continuing anonymously')
     } catch (error: any) {

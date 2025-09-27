@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import AdminAuthGuard from '@/components/auth/AdminAuthGuard'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -188,7 +189,8 @@ export default function SurveyBuilderPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <AdminAuthGuard>
+      <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b bg-card">
         <div className="flex h-16 items-center justify-between px-6">
@@ -401,6 +403,7 @@ export default function SurveyBuilderPage() {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
+      </div>
+    </AdminAuthGuard>
   )
 }

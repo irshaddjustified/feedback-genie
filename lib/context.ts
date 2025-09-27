@@ -1,33 +1,37 @@
-import type { Session } from 'next-auth'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from './auth'
-import { database } from './prisma'
+import { authService, AppUser } from './firebase'
 
 type CreateContextOptions = {
-  session: Session | null
+  user: AppUser | null
 }
 
 const createInnerContext = (opts: CreateContextOptions) => {
   return {
-    session: opts.session,
-    database,
+    user: opts.user,
+    session: opts.user ? {
+      user: {
+        id: opts.user.uid,
+        email: opts.user.email,
+        name: opts.user.displayName || '',
+        role: opts.user.role
+      }
+    } : null
   }
 }
 
-// Context creator for API routes (no longer tRPC-specific)
+// Context creator for API routes using Firebase auth
 export const createContext = async (req?: Request) => {
   try {
-    // Get the session from the server using the getServerSession wrapper function
-    const session = await getServerSession(authOptions)
+    // Get the current user from Firebase auth
+    const user = await authService.getCurrentUser()
 
     return createInnerContext({
-      session,
+      user,
     })
   } catch (error) {
-    // Handle case where session retrieval fails
-    console.error('Error getting session:', error)
+    // Handle case where auth retrieval fails
+    console.error('Error getting user:', error)
     return createInnerContext({
-      session: null,
+      user: null,
     })
   }
 }

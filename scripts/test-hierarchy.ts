@@ -1,9 +1,7 @@
 // Test script to verify the Organization > Client > Project > Survey hierarchy
 // This can be run in the browser console or as a Node.js script
 
-import { ApiClient } from './lib/api-client'
-
-const apiClient = new ApiClient()
+import { apiClient } from '../lib/api-client'
 
 async function testHierarchy() {
   console.log('🧪 Testing Organization > Client > Project > Survey hierarchy...')

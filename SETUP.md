@@ -48,13 +48,13 @@ Edit `.env.local` with your configuration:
 # Database Configuration (SQLite - automatically managed)
 # No database configuration needed
 
-# NextAuth Configuration
+# NextAuth Configuration (legacy)
 NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="your-random-secret-here"
 
-# Admin Credentials
+# Firebase Authentication (primary admin auth)
 ADMIN_EMAIL="admin@insighture.com"
-ADMIN_PASSWORD="admin123"
+ADMIN_DOMAINS="insighture.com,yourcompany.com"
 
 # AI Service API Keys (Optional for development)
 OPENAI_API_KEY="sk-your-openai-key"
@@ -65,7 +65,21 @@ GOOGLE_GEMINI_KEY="your-gemini-key"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 ```
 
-#### Step 3: Firebase Setup
+#### Step 3: Firebase Google Authentication Setup
+
+1. Go to your [Firebase Console](https://console.firebase.google.com)
+2. Select your project (or create one if you haven't)
+3. Navigate to **Authentication** in the left sidebar
+4. Click on **Sign-in method** tab
+5. Enable **Google** as a sign-in provider:
+   - Click on Google in the list
+   - Toggle "Enable"
+   - Your project's support email will be auto-configured
+   - Click "Save"
+6. (Optional) Configure authorized domains if deploying to production
+7. Admin access is automatically determined by email domain matching the `ADMIN_DOMAINS` environment variable
+
+#### Step 4: Firebase Firestore Setup
 
 1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
 2. Enable Firestore Database in your Firebase project
@@ -73,7 +87,7 @@ NEXT_PUBLIC_APP_URL="http://localhost:3000"
 
 No additional database setup commands are needed - Firebase is ready to use!
 
-#### Step 4: Start Development Server
+#### Step 5: Start Development Server
 
 ```bash
 npm run dev

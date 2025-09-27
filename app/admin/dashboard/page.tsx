@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import AdminAuthGuard from '@/components/auth/AdminAuthGuard'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -21,45 +21,54 @@ import {
 import Link from 'next/link'
 import { apiClient } from '@/lib/api-client'
 import { toast } from 'sonner'
+import { useAuth } from '@/lib/contexts/AuthContext'
 
 export default function AdminDashboard() {
-  const { data: session, status } = useSession()
+  const { user, loading } = useAuth()
   const router = useRouter()
+  const [selectedOrganization, setSelectedOrganization] = useState<string>('all')
   const [selectedClient, setSelectedClient] = useState<string>('all')
   const [selectedProject, setSelectedProject] = useState<string>('all')
   const [metrics, setMetrics] = useState<any>(null)
   const [recentActivity, setRecentActivity] = useState<any[]>([])
+  const [organizations, setOrganizations] = useState<any[]>([])
   const [clients, setClients] = useState<any[]>([])
   const [projects, setProjects] = useState<any[]>([])
+  const [surveys, setSurveys] = useState<any[]>([])
+  const [filteredClients, setFilteredClients] = useState<any[]>([])
   const [filteredProjects, setFilteredProjects] = useState<any[]>([])
+  const [filteredSurveys, setFilteredSurveys] = useState<any[]>([])
   const [metricsLoading, setMetricsLoading] = useState(true)
   const [loadingData, setLoadingData] = useState(true)
   
-  // Redirect if not authenticated
-  useEffect(() => {
-    if (status === 'loading') return // Still loading
-    if (!session) {
-      router.push('/auth/login')
-      return
-    }
-  }, [session, status, router])
+  // AdminAuthGuard handles authentication checks
 
   // Load initial data
   useEffect(() => {
-    if (!session) return
+    if (!user) return
     
     const loadDashboardData = async () => {
       try {
         setLoadingData(true)
         
+        // Load organizations
+        const organizationsData = await apiClient.organizations.getAll()
+        setOrganizations(organizationsData)
+        
         // Load clients
         const clientsData = await apiClient.clients.getAll()
         setClients(clientsData)
+        setFilteredClients(clientsData) // Initially show all clients
         
         // Load all projects
         const projectsData = await apiClient.projects.getAll()
         setProjects(projectsData)
         setFilteredProjects(projectsData) // Initially show all projects
+        
+        // Load all surveys
+        const surveysData = await apiClient.surveys.getAll()
+        setSurveys(surveysData)
+        setFilteredSurveys(surveysData) // Initially show all surveys
         
         // Load recent activity
         const responsesData = await apiClient.responses.getAll()
@@ -67,7 +76,7 @@ export default function AdminDashboard() {
         
         // Load metrics (mock data for now)
         const mockMetrics = {
-          totalSurveys: projectsData.length * 2,
+          totalSurveys: surveysData.length,
           totalResponses: responsesData.length,
           avgSentiment: 0.75,
           completionRate: 0.85
@@ -84,32 +93,73 @@ export default function AdminDashboard() {
     }
     
     loadDashboardData()
-  }, [session])
+  }, [user])
+
+  // Filter clients when organization selection changes
+  useEffect(() => {
+    if (selectedOrganization === 'all') {
+      setFilteredClients(clients)
+    } else {
+      const filtered = clients.filter(client => client.organizationId === selectedOrganization)
+      setFilteredClients(filtered)
+    }
+    // Reset downstream selections when organization changes
+    setSelectedClient('all')
+    setSelectedProject('all')
+  }, [selectedOrganization, clients])
 
   // Filter projects when client selection changes
   useEffect(() => {
     if (selectedClient === 'all') {
-      setFilteredProjects(projects)
+      const baseProjects = selectedOrganization === 'all' ? projects : 
+        projects.filter(project => {
+          const client = clients.find(c => c.id === project.clientId)
+          return client && client.organizationId === selectedOrganization
+        })
+      setFilteredProjects(baseProjects)
     } else {
       const filtered = projects.filter(project => project.clientId === selectedClient)
       setFilteredProjects(filtered)
     }
     // Reset project selection when client changes
     setSelectedProject('all')
-  }, [selectedClient, projects])
+  }, [selectedClient, projects, selectedOrganization, clients])
+
+  // Filter surveys when project selection changes
+  useEffect(() => {
+    if (selectedProject === 'all') {
+      // Show surveys from filtered projects
+      if (filteredProjects.length === 0) {
+        // If no projects are filtered, show all surveys
+        setFilteredSurveys(surveys)
+      } else {
+        // Show surveys only from filtered projects
+        const projectIds = filteredProjects.map(p => p.id)
+        const filtered = surveys.filter(survey => projectIds.includes(survey.projectId))
+        setFilteredSurveys(filtered)
+      }
+    } else {
+      // Show surveys from specific project
+      const filtered = surveys.filter(survey => survey.projectId === selectedProject)
+      setFilteredSurveys(filtered)
+    }
+  }, [selectedProject, surveys, filteredProjects])
 
   // Reload metrics when project filter changes
   useEffect(() => {
-    if (!session || loadingData) return
+    if (!user || loadingData) return
     
     const loadFilteredMetrics = async () => {
       try {
         setMetricsLoading(true)
         
-        // Mock filtered metrics based on selected project
+        // Mock filtered metrics based on current filters
+        const totalSurveys = filteredSurveys.length
+        const totalResponses = selectedProject === 'all' ? recentActivity.length : Math.floor(recentActivity.length / (filteredSurveys.length || 1))
+        
         const filteredMetrics = {
-          totalSurveys: selectedProject === 'all' ? projects.length * 2 : 2,
-          totalResponses: selectedProject === 'all' ? recentActivity.length : Math.floor(recentActivity.length / projects.length || 1),
+          totalSurveys,
+          totalResponses,
           avgSentiment: 0.75,
           completionRate: 0.85
         }
@@ -123,7 +173,7 @@ export default function AdminDashboard() {
     }
     
     loadFilteredMetrics()
-  }, [selectedProject, session, projects.length, recentActivity.length, loadingData])
+  }, [selectedProject, filteredSurveys.length, user, recentActivity.length, loadingData])
 
   const handleGenerateInsights = async () => {
     try {
@@ -149,7 +199,7 @@ export default function AdminDashboard() {
     }
   }
 
-  if (status === 'loading') {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -160,19 +210,20 @@ export default function AdminDashboard() {
     )
   }
 
-  if (!session) {
+  if (!user) {
     return null // Will redirect
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <AdminAuthGuard>
+      <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b">
         <div className="flex h-16 items-center justify-between px-6">
           <div>
             <h1 className="text-2xl font-bold">Feedback Dashboard</h1>
             <p className="text-sm text-muted-foreground">
-              Welcome back, {session.user?.name || session.user?.email}
+              Welcome back, {user.displayName || user.email}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -193,18 +244,38 @@ export default function AdminDashboard() {
       </div>
 
       <div className="p-6 space-y-6">
-        {/* Client and Project Filters */}
+        {/* Organization, Client and Project Filters */}
         <div className="flex items-center gap-6 flex-wrap">
+          {/* Organization Filter */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium">Organization:</label>
+            <select 
+              value={selectedOrganization} 
+              onChange={(e) => setSelectedOrganization(e.target.value)}
+              className="px-3 py-2 border rounded-md bg-background min-w-48"
+            >
+              <option value="all">All Organizations</option>
+              {organizations?.map(org => (
+                <option key={org.id} value={org.id}>
+                  {org.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Client Filter */}
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium">Filter by Client:</label>
+            <label className="text-sm font-medium">Client:</label>
             <select 
               value={selectedClient} 
               onChange={(e) => setSelectedClient(e.target.value)}
               className="px-3 py-2 border rounded-md bg-background min-w-48"
+              disabled={selectedOrganization !== 'all' && filteredClients.length === 0}
             >
-              <option value="all">All Clients</option>
-              {clients?.map(client => (
+              <option value="all">
+                {selectedOrganization === 'all' ? 'All Clients' : 'All Clients in Organization'}
+              </option>
+              {filteredClients?.map(client => (
                 <option key={client.id} value={client.id}>
                   {client.name}
                 </option>
@@ -214,7 +285,7 @@ export default function AdminDashboard() {
 
           {/* Project Filter */}
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium">Filter by Project:</label>
+            <label className="text-sm font-medium">Project:</label>
             <select 
               value={selectedProject} 
               onChange={(e) => setSelectedProject(e.target.value)}
@@ -274,7 +345,72 @@ export default function AdminDashboard() {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Surveys List */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Surveys</CardTitle>
+                  <CardDescription>
+                    {filteredSurveys.length > 0 
+                      ? `${filteredSurveys.length} survey${filteredSurveys.length !== 1 ? 's' : ''} found`
+                      : 'No surveys match the current filters'
+                    }
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loadingData ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                      <p className="text-muted-foreground">Loading surveys...</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {filteredSurveys.length > 0 ? filteredSurveys.map((survey) => (
+                      <div key={survey.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-sm font-medium">
+                              {survey.title || survey.name || 'Untitled Survey'}
+                            </span>
+                            <Badge variant={survey.status === 'PUBLISHED' ? 'default' : 'secondary'}>
+                              {survey.status || 'DRAFT'}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Project: {projects.find(p => p.id === survey.projectId)?.name || 'Unknown'}
+                            {survey.createdAt && ` • Created ${new Date(survey.createdAt).toLocaleDateString()}`}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/admin/surveys/${survey.id}/builder`}>
+                              <FileText className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/feedback/${survey.shareLink}`} target="_blank">
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
+                    )) : (
+                      <div className="text-center py-8">
+                        <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <p className="text-muted-foreground mb-4">No surveys found</p>
+                        <Button asChild>
+                          <Link href="/admin/surveys/create">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Create Survey
+                          </Link>
+                        </Button>
+                      </div>
+                    )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
               {/* Recent Activity */}
               <Card>
                 <CardHeader>
@@ -283,7 +419,7 @@ export default function AdminDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {recentActivity?.length > 0 ? recentActivity.map((response, index) => (
+                    {recentActivity?.length > 0 ? recentActivity.slice(0, 5).map((response, index) => (
                       <div key={response.id || index} className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
@@ -398,7 +534,8 @@ export default function AdminDashboard() {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
+      </div>
+    </AdminAuthGuard>
   )
 }
 

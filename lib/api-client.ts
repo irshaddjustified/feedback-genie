@@ -25,8 +25,8 @@ class ApiClient {
     return response.json()
   }
 
-  // Organization
-  organization = {
+  // Organizations
+  organizations = {
     getAll: () => this.request<any[]>('/organizations'),
     getById: (id: string) => this.request<any>(`/organizations/${id}`),
     create: (data: any) => this.request<any>('/organizations', {
@@ -36,6 +36,9 @@ class ApiClient {
     update: (id: string, data: any) => this.request<any>(`/organizations/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
+    }),
+    delete: (id: string) => this.request<{ success: boolean }>(`/organizations/${id}`, {
+      method: 'DELETE',
     }),
   }
 

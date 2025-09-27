@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     const context = await createContext(request)
     
-    if (!context.session) {
+    if (!context.user || context.user.isAnonymous) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
   try {
     const context = await createContext(request)
     
-    if (!context.session) {
+    if (!context.user || context.user.isAnonymous) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

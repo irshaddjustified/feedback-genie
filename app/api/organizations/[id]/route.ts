@@ -13,7 +13,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const organization = await database.organizations.findById(params.id)
+    const organization = await database.organization.findById(params.id)
     
     if (!organization) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
@@ -44,7 +44,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Organization name is required' }, { status: 400 })
     }
 
-    const organization = await database.organizations.update(params.id, {
+    const organization = await database.organization.update(params.id, {
       name: body.name,
       description: body.description || ''
     })
@@ -68,7 +68,7 @@ export async function DELETE(
     }
 
     // Check if organization exists
-    const organization = await database.organizations.findById(params.id)
+    const organization = await database.organization.findById(params.id)
     if (!organization) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
     }
@@ -76,7 +76,7 @@ export async function DELETE(
     // TODO: Check if organization has clients before deleting
     // For now, we'll allow deletion but in production you might want to cascade or prevent deletion
 
-    await database.organizations.delete(params.id)
+    await database.organization.delete(params.id)
     
     return NextResponse.json({ success: true })
   } catch (error) {

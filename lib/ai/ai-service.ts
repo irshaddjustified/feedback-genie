@@ -51,7 +51,7 @@ class AIService {
 
   constructor() {
     this.apiKeys = {
-      openai: process.env.OPENAI_API_KEY,
+      openai: process.env.GOOGLE_GEMINI_KEY,
       anthropic: process.env.ANTHROPIC_API_KEY,
       google: process.env.GOOGLE_GEMINI_KEY
     }
