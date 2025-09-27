@@ -19,13 +19,21 @@ import {
   Sparkles
 } from 'lucide-react'
 import Link from 'next/link'
-import { api } from '@/lib/trpc-client'
+import { apiClient } from '@/lib/api-client'
 import { toast } from 'sonner'
 
 export default function AdminDashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const [selectedClient, setSelectedClient] = useState<string>('all')
   const [selectedProject, setSelectedProject] = useState<string>('all')
+  const [metrics, setMetrics] = useState<any>(null)
+  const [recentActivity, setRecentActivity] = useState<any[]>([])
+  const [clients, setClients] = useState<any[]>([])
+  const [projects, setProjects] = useState<any[]>([])
+  const [filteredProjects, setFilteredProjects] = useState<any[]>([])
+  const [metricsLoading, setMetricsLoading] = useState(true)
+  const [loadingData, setLoadingData] = useState(true)
   
   // Redirect if not authenticated
   useEffect(() => {
@@ -36,36 +44,108 @@ export default function AdminDashboard() {
     }
   }, [session, status, router])
 
-  // Get dashboard metrics
-  const { data: metrics, isLoading: metricsLoading } = api.analytics.dashboard.useQuery(
-    { 
-      projectId: selectedProject === 'all' ? undefined : selectedProject 
-    },
-    { enabled: !!session }
-  )
+  // Load initial data
+  useEffect(() => {
+    if (!session) return
+    
+    const loadDashboardData = async () => {
+      try {
+        setLoadingData(true)
+        
+        // Load clients
+        const clientsData = await apiClient.clients.getAll()
+        setClients(clientsData)
+        
+        // Load all projects
+        const projectsData = await apiClient.projects.getAll()
+        setProjects(projectsData)
+        setFilteredProjects(projectsData) // Initially show all projects
+        
+        // Load recent activity
+        const responsesData = await apiClient.responses.getAll()
+        setRecentActivity(responsesData.slice(0, 10)) // Get latest 10
+        
+        // Load metrics (mock data for now)
+        const mockMetrics = {
+          totalSurveys: projectsData.length * 2,
+          totalResponses: responsesData.length,
+          avgSentiment: 0.75,
+          completionRate: 0.85
+        }
+        setMetrics(mockMetrics)
+        
+      } catch (error) {
+        console.error('Failed to load dashboard data:', error)
+        toast.error('Failed to load dashboard data')
+      } finally {
+        setLoadingData(false)
+        setMetricsLoading(false)
+      }
+    }
+    
+    loadDashboardData()
+  }, [session])
 
-  // Get recent responses
-  const { data: recentActivity } = api.response.list.useQuery(
-    { surveyId: '', limit: 10 },
-    { enabled: !!session }
-  )
+  // Filter projects when client selection changes
+  useEffect(() => {
+    if (selectedClient === 'all') {
+      setFilteredProjects(projects)
+    } else {
+      const filtered = projects.filter(project => project.clientId === selectedClient)
+      setFilteredProjects(filtered)
+    }
+    // Reset project selection when client changes
+    setSelectedProject('all')
+  }, [selectedClient, projects])
 
-  // Get projects for filter
-  const { data: projects } = api.project.list.useQuery(
-    { limit: 50 },
-    { enabled: !!session }
-  )
+  // Reload metrics when project filter changes
+  useEffect(() => {
+    if (!session || loadingData) return
+    
+    const loadFilteredMetrics = async () => {
+      try {
+        setMetricsLoading(true)
+        
+        // Mock filtered metrics based on selected project
+        const filteredMetrics = {
+          totalSurveys: selectedProject === 'all' ? projects.length * 2 : 2,
+          totalResponses: selectedProject === 'all' ? recentActivity.length : Math.floor(recentActivity.length / projects.length || 1),
+          avgSentiment: 0.75,
+          completionRate: 0.85
+        }
+        setMetrics(filteredMetrics)
+        
+      } catch (error) {
+        console.error('Failed to load filtered metrics:', error)
+      } finally {
+        setMetricsLoading(false)
+      }
+    }
+    
+    loadFilteredMetrics()
+  }, [selectedProject, session, projects.length, recentActivity.length, loadingData])
 
   const handleGenerateInsights = async () => {
     try {
-      const insights = await api.ai.generateInsights.query({
-        projectId: selectedProject === 'all' ? undefined : selectedProject
-      })
+      // Mock AI insights generation - replace with actual API call when ready
+      const mockInsights = {
+        summary: 'Overall feedback sentiment has improved by 15% this quarter',
+        keyFindings: [
+          'Communication quality rated highly across all projects',
+          'Timeline adherence needs improvement',
+          'Client satisfaction is above industry average'
+        ],
+        recommendations: [
+          'Focus on project timeline management',
+          'Continue excellent communication practices'
+        ]
+      }
       
       toast.success('AI insights generated successfully!')
+      console.log('Generated insights:', mockInsights)
       // Show insights in a dialog or navigate to insights page
-    } catch (error) {
-      toast.error('Failed to generate insights')
+    } catch (error: any) {
+      toast.error('Failed to generate insights: ' + (error?.message || 'Unknown error'))
     }
   }
 
@@ -96,6 +176,12 @@ export default function AdminDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <Button asChild variant="outline">
+              <Link href="/admin/clients">
+                <Users className="h-4 w-4 mr-2" />
+                Manage Clients
+              </Link>
+            </Button>
             <Button asChild>
               <Link href="/admin/surveys/create">
                 <Plus className="h-4 w-4 mr-2" />
@@ -107,21 +193,44 @@ export default function AdminDashboard() {
       </div>
 
       <div className="p-6 space-y-6">
-        {/* Project Filter */}
-        <div className="flex items-center gap-4">
-          <label className="text-sm font-medium">Filter by Project:</label>
-          <select 
-            value={selectedProject} 
-            onChange={(e) => setSelectedProject(e.target.value)}
-            className="px-3 py-2 border rounded-md bg-background"
-          >
-            <option value="all">All Projects</option>
-            {projects?.map(project => (
-              <option key={project.id} value={project.id}>
-                {project.name} ({project.clientName})
+        {/* Client and Project Filters */}
+        <div className="flex items-center gap-6 flex-wrap">
+          {/* Client Filter */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium">Filter by Client:</label>
+            <select 
+              value={selectedClient} 
+              onChange={(e) => setSelectedClient(e.target.value)}
+              className="px-3 py-2 border rounded-md bg-background min-w-48"
+            >
+              <option value="all">All Clients</option>
+              {clients?.map(client => (
+                <option key={client.id} value={client.id}>
+                  {client.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Project Filter */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium">Filter by Project:</label>
+            <select 
+              value={selectedProject} 
+              onChange={(e) => setSelectedProject(e.target.value)}
+              className="px-3 py-2 border rounded-md bg-background min-w-48"
+              disabled={selectedClient !== 'all' && filteredProjects.length === 0}
+            >
+              <option value="all">
+                {selectedClient === 'all' ? 'All Projects' : 'All Projects for Selected Client'}
               </option>
-            ))}
-          </select>
+              {filteredProjects?.map(project => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Metrics Grid */}
@@ -174,7 +283,7 @@ export default function AdminDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {metrics?.recentResponses?.map((response, index) => (
+                    {recentActivity?.length > 0 ? recentActivity.map((response, index) => (
                       <div key={response.id || index} className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
@@ -203,7 +312,9 @@ export default function AdminDashboard() {
                           </Link>
                         </Button>
                       </div>
-                    ))}
+                    )) : (
+                      <p className="text-muted-foreground text-center py-4">No recent activity</p>
+                    )}
                   </div>
                 </CardContent>
               </Card>

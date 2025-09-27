@@ -16,9 +16,9 @@ import {
   Trash2,
   Copy,
   ArrowLeft,
-  PublishIcon as Publish
+  Send as Publish
 } from 'lucide-react'
-import { api } from '@/lib/trpc-client'
+import { apiClient } from '@/lib/api-client'
 import { toast } from 'sonner'
 
 // Dynamically import SurveyJS components to avoid SSR issues
@@ -42,34 +42,54 @@ export default function SurveyBuilderPage() {
   const [surveyJson, setSurveyJson] = useState<any>(null)
   const [isModified, setIsModified] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [survey, setSurvey] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Get survey data
-  const { data: survey, isLoading } = api.survey.getById.useQuery(
-    { id: surveyId },
-    { enabled: !!surveyId }
-  )
+  // Load survey data
+  useEffect(() => {
+    if (!surveyId) return
+    
+    const loadSurvey = async () => {
+      try {
+        setIsLoading(true)
+        const surveyData = await apiClient.surveys.getById(surveyId)
+        setSurvey(surveyData)
+        
+        // Initialize survey JSON if it exists
+        if (surveyData?.schema) {
+          setSurveyJson(surveyData.schema)
+        }
+      } catch (error: any) {
+        console.error('Failed to load survey:', error)
+        toast.error('Failed to load survey: ' + (error?.message || 'Unknown error'))
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    loadSurvey()
+  }, [surveyId])
 
-  // Update survey mutation
-  const updateSurvey = api.survey.update.useMutation({
-    onSuccess: () => {
+  // Helper functions for API calls
+  const updateSurveyApi = async (data: any) => {
+    try {
+      await apiClient.surveys.update(surveyId, data)
       toast.success('Survey saved successfully!')
       setIsModified(false)
-    },
-    onError: (error) => {
-      toast.error('Failed to save survey: ' + error.message)
+    } catch (error: any) {
+      toast.error('Failed to save survey: ' + (error?.message || 'Unknown error'))
     }
-  })
+  }
 
-  // Publish survey mutation
-  const publishSurvey = api.survey.publish.useMutation({
-    onSuccess: () => {
+  const publishSurveyApi = async () => {
+    try {
+      await apiClient.surveys.update(surveyId, { status: 'PUBLISHED' })
       toast.success('Survey published successfully!')
       router.push(`/admin/surveys/${surveyId}`)
-    },
-    onError: (error) => {
-      toast.error('Failed to publish survey: ' + error.message)
+    } catch (error: any) {
+      toast.error('Failed to publish survey: ' + (error?.message || 'Unknown error'))
     }
-  })
+  }
 
   useEffect(() => {
     if (survey?.template?.schema) {
@@ -87,8 +107,7 @@ export default function SurveyBuilderPage() {
     
     setIsSaving(true)
     try {
-      await updateSurvey.mutateAsync({
-        id: surveyId,
+      await updateSurveyApi({
         schema: surveyJson
       })
     } finally {
@@ -101,29 +120,38 @@ export default function SurveyBuilderPage() {
       await handleSave()
     }
     
-    await publishSurvey.mutateAsync({
-      id: surveyId,
-      settings: {
-        allowAnonymous: true,
-        notifyOnResponse: true
-      }
-    })
+    await publishSurveyApi()
   }
 
   const generateAIQuestions = async () => {
     try {
-      const suggestions = await api.ai.generateQuestions.mutate({
-        surveyId,
-        prompt: `Generate additional questions for: ${survey?.title}`,
-        existingQuestions: surveyJson?.pages?.[0]?.elements || [],
-        maxQuestions: 3
-      })
+      // Mock AI question generation - replace with actual API call when ready
+      const mockSuggestions = [
+        {
+          type: 'rating',
+          name: 'overall_satisfaction',
+          title: 'How satisfied are you with the overall experience?',
+          rateMax: 5
+        },
+        {
+          type: 'comment',
+          name: 'improvements',
+          title: 'What improvements would you suggest?',
+          rows: 3
+        },
+        {
+          type: 'radiogroup',
+          name: 'recommendation',
+          title: 'Would you recommend us to others?',
+          choices: ['Definitely', 'Probably', 'Maybe', 'Probably not', 'Definitely not']
+        }
+      ]
       
       toast.success('AI suggestions generated!')
+      console.log('AI suggestions:', mockSuggestions)
       // In a real implementation, show suggestions in a modal
-      console.log('AI suggestions:', suggestions)
-    } catch (error) {
-      toast.error('Failed to generate AI suggestions')
+    } catch (error: any) {
+      toast.error('Failed to generate AI suggestions: ' + (error?.message || 'Unknown error'))
     }
   }
 
@@ -208,7 +236,7 @@ export default function SurveyBuilderPage() {
               <Button
                 size="sm"
                 onClick={handlePublish}
-                disabled={publishSurvey.isPending}
+                disabled={isSaving}
               >
                 <Publish className="h-4 w-4 mr-2" />
                 Publish

@@ -1,7 +1,7 @@
 import type { Session } from 'next-auth'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from './auth'
-import { prisma } from './prisma'
+import { database } from './prisma'
 
 type CreateContextOptions = {
   session: Session | null
@@ -10,14 +10,12 @@ type CreateContextOptions = {
 const createInnerContext = (opts: CreateContextOptions) => {
   return {
     session: opts.session,
-    prisma,
+    database,
   }
 }
 
-// Updated for tRPC v11 fetch adapter
-export const createContext = async (opts: { req: Request, res?: Response }) => {
-  const { req } = opts
-
+// Context creator for API routes (no longer tRPC-specific)
+export const createContext = async (req?: Request) => {
   try {
     // Get the session from the server using the getServerSession wrapper function
     const session = await getServerSession(authOptions)

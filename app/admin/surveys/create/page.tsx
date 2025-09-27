@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -21,8 +21,9 @@ import {
   Loader2,
   ArrowRight 
 } from 'lucide-react'
-import { api } from '@/lib/trpc-client'
+import { apiClient } from '@/lib/api-client'
 import { toast } from 'sonner'
+import { SurveyQRDialog } from '@/components/survey/SurveyQRDialog'
 
 const createSurveySchema = z.object({
   title: z.string().min(1, 'Survey title is required'),
@@ -67,6 +68,11 @@ export default function CreateSurveyPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<string>('')
   const [aiGenerating, setAiGenerating] = useState(false)
   const [aiSuggestions, setAiSuggestions] = useState<any>(null)
+  const [projects, setProjects] = useState<any[]>([])
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [loadingProjects, setLoadingProjects] = useState(true)
+  const [createdSurvey, setCreatedSurvey] = useState<any>(null)
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false)
 
   const form = useForm<CreateSurveyForm>({
     resolver: zodResolver(createSurveySchema),
@@ -77,19 +83,21 @@ export default function CreateSurveyPage() {
     }
   })
 
-  // Get projects for selection
-  const { data: projects } = api.project.list.useQuery({ limit: 50 })
-
-  // Create survey mutation
-  const createSurvey = api.survey.create.useMutation({
-    onSuccess: (survey) => {
-      toast.success('Survey created successfully!')
-      router.push(`/admin/surveys/${survey.id}/builder`)
-    },
-    onError: (error) => {
-      toast.error('Failed to create survey: ' + error.message)
+  // Load projects on component mount
+  useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        const projectData = await apiClient.projects.getAll()
+        setProjects(projectData)
+      } catch (error) {
+        console.error('Failed to load projects:', error)
+        toast.error('Failed to load projects')
+      } finally {
+        setLoadingProjects(false)
+      }
     }
-  })
+    loadProjects()
+  }, [])
 
   const handleTemplateSelect = (templateId: string) => {
     setSelectedTemplate(templateId)
@@ -111,19 +119,21 @@ export default function CreateSurveyPage() {
 
     setAiGenerating(true)
     try {
-      const suggestions = await api.ai.generateSurvey.mutate({
-        context: `Create a feedback survey for project: ${selectedProjectData.name}`,
-        clientName: selectedProjectData.clientName,
-        projectType: 'software_development'
-      })
+      // Mock AI suggestions for now - replace with actual API call when AI service is ready
+      const suggestions = {
+        title: `${selectedProjectData.name} Feedback Survey`,
+        description: `Collect feedback on the ${selectedProjectData.name} project for ${selectedProjectData.clientName}`,
+        estimatedDuration: '3-5 minutes',
+        recommendedQuestions: 'Overall satisfaction, communication quality, deliverable quality, timeline adherence'
+      }
       
       setAiSuggestions(suggestions)
       form.setValue('title', suggestions.title)
       form.setValue('description', suggestions.description)
       
       toast.success('AI suggestions generated!')
-    } catch (error) {
-      toast.error('Failed to generate AI suggestions')
+    } catch (error: any) {
+      toast.error('Failed to generate AI suggestions: ' + (error?.message || 'Unknown error'))
     } finally {
       setAiGenerating(false)
     }
@@ -135,7 +145,27 @@ export default function CreateSurveyPage() {
       return
     }
 
-    await createSurvey.mutateAsync(data)
+    setIsSubmitting(true)
+    try {
+      const survey = await apiClient.surveys.create({
+        ...data,
+        shareLink: crypto.randomUUID(), // Generate unique share link
+        status: 'DRAFT'
+      })
+      
+      setCreatedSurvey(survey)
+      setShowSuccessDialog(true)
+      toast.success('Survey created successfully!')
+    } catch (error: any) {
+      toast.error('Failed to create survey: ' + (error?.message || 'Unknown error'))
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleContinueToBuilder = () => {
+    setShowSuccessDialog(false)
+    router.push(`/admin/surveys/${createdSurvey.id}/builder`)
   }
 
   return (
@@ -165,19 +195,28 @@ export default function CreateSurveyPage() {
                     <SelectValue placeholder="Choose a project or leave empty for general survey" />
                   </SelectTrigger>
                   <SelectContent>
-                    {projects?.map(project => (
-                      <SelectItem key={project.id} value={project.id}>
+                    {loadingProjects ? (
+                      <SelectItem value="loading" disabled>
                         <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4" />
-                          <div>
-                            <div className="font-medium">{project.name}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {project.clientName} • {project.status}
-                            </div>
-                          </div>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Loading projects...
                         </div>
                       </SelectItem>
-                    ))}
+                    ) : (
+                      projects?.map(project => (
+                        <SelectItem key={project.id} value={project.id}>
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4" />
+                            <div>
+                              <div className="font-medium">{project.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {project.clientName} • {project.status}
+                              </div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -294,10 +333,10 @@ export default function CreateSurveyPage() {
               <div className="flex justify-end">
                 <Button 
                   type="submit" 
-                  disabled={createSurvey.isPending || !selectedTemplate}
+                  disabled={isSubmitting || !selectedTemplate}
                   className="min-w-32"
                 >
-                  {createSurvey.isPending ? (
+                  {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Creating...

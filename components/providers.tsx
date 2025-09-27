@@ -2,19 +2,24 @@
 
 import { SessionProvider } from 'next-auth/react'
 import { Toaster } from '@/components/ui/sonner'
-import { api } from '@/lib/trpc-client'
+import { ThemeProvider } from 'next-themes'
 
 interface ProvidersProps {
   children: React.ReactNode
 }
 
-function ProvidersInner({ children }: ProvidersProps) {
+export function Providers({ children }: ProvidersProps) {
   return (
     <SessionProvider>
-      {children}
-      <Toaster />
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="system"
+        enableSystem
+        disableTransitionOnChange
+      >
+        {children}
+        <Toaster />
+      </ThemeProvider>
     </SessionProvider>
   )
 }
-
-export const Providers = api.withTRPC(ProvidersInner)

@@ -7,14 +7,46 @@ export interface Question {
   order: number
 }
 
+export interface Organization {
+  id: string
+  name: string
+  description?: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface Client {
+  id: string
+  organizationId: string
+  name: string
+  email?: string
+  description?: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface Project {
+  id: string
+  clientId: string
+  name: string
+  description?: string
+  status: "active" | "inactive" | "completed"
+  createdAt: Date
+  updatedAt: Date
+}
+
 export interface Survey {
   id: string
+  projectId: string
   name: string
   type: "client-project" | "event-feedback"
   description: string
   questions: Question[]
   isActive: boolean
+  shareLink?: string
+  status: "DRAFT" | "ACTIVE" | "COMPLETED"
   createdAt: Date
+  updatedAt: Date
 }
 
 export interface Response {

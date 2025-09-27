@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CalendarIcon, Loader2, Plus } from 'lucide-react'
-import { api } from '@/lib/trpc-client'
+import { apiClient } from '@/lib/api-client'
 import { toast } from 'sonner'
 
 const createProjectSchema = z.object({
@@ -42,28 +42,22 @@ export default function CreateProjectPage() {
     }
   })
 
-  const createProject = api.project.create.useMutation({
-    onSuccess: (project) => {
-      toast.success('Project created successfully!')
-      router.push(`/admin/projects/${project.id}`)
-    },
-    onError: (error) => {
-      toast.error('Failed to create project: ' + error.message)
-    }
-  })
-
   const handleSubmit = async (data: CreateProjectForm) => {
     setIsSubmitting(true)
     try {
-      await createProject.mutateAsync({
+      const project = await apiClient.projects.create({
         name: data.name,
         clientName: data.clientName,
         description: data.description,
         startDate: new Date(data.startDate),
-        endDate: data.endDate ? new Date(data.endDate) : undefined
+        endDate: data.endDate ? new Date(data.endDate) : undefined,
+        status: data.status
       })
-    } catch (error) {
-      // Error handled by mutation
+      
+      toast.success('Project created successfully!')
+      router.push(`/admin/projects/${project.id}`)
+    } catch (error: any) {
+      toast.error('Failed to create project: ' + (error?.message || 'Unknown error'))
     } finally {
       setIsSubmitting(false)
     }
@@ -189,10 +183,10 @@ export default function CreateProjectPage() {
                 </Button>
                 <Button 
                   type="submit" 
-                  disabled={isSubmitting || createProject.isPending}
+                  disabled={isSubmitting}
                   className="min-w-32"
                 >
-                  {isSubmitting || createProject.isPending ? (
+                  {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Creating...

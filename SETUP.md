@@ -65,15 +65,13 @@ GOOGLE_GEMINI_KEY="your-gemini-key"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 ```
 
-#### Step 3: Database Setup
+#### Step 3: Firebase Setup
 
-```bash
-# Generate Prisma client
-npx prisma generate
+1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
+2. Enable Firestore Database in your Firebase project
+3. Copy your Firebase configuration and add to `.env.local`
 
-# Push database schema
-npx prisma db push
-```
+No additional database setup commands are needed - Firebase is ready to use!
 
 #### Step 4: Start Development Server
 
@@ -85,28 +83,30 @@ Visit [http://localhost:3000](http://localhost:3000) to see the application.
 
 ## Database Setup
 
-### SQLite Database (Default)
+### Firebase Firestore (Default)
 
-The application uses SQLite by default, which requires no setup:
+The application uses Firebase Firestore as its database:
 
-- Database file: `prisma/dev.db`
-- Automatically created when you run `prisma db push`
-- Perfect for development and small to medium applications
-- No external database service required
-
-### Alternative: PostgreSQL (Advanced)
-
-If you need PostgreSQL for production:
-
-1. Update `prisma/schema.prisma`:
-   ```prisma
-   datasource db {
-     provider = "postgresql"
-     url      = env("DATABASE_URL")
-   }
+1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
+2. Enable Firestore Database
+3. Copy your Firebase configuration from Project Settings
+4. Update your `.env.local` with Firebase credentials:
+   ```env
+   NEXT_PUBLIC_FIREBASE_API_KEY="your-api-key"
+   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="your-project.firebaseapp.com"
+   NEXT_PUBLIC_FIREBASE_PROJECT_ID="your-project-id"
+   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="your-project.appspot.com"
+   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="your-sender-id"
+   NEXT_PUBLIC_FIREBASE_APP_ID="your-app-id"
    ```
-2. Set `DATABASE_URL` in `.env.local`
-3. Use services like Railway, Supabase, or Neon
+
+### Firebase Benefits
+
+- **No setup required**: Firestore is serverless and fully managed
+- **Real-time updates**: Built-in real-time synchronization
+- **Scalable**: Automatically scales with your application
+- **Authentication**: Integrated with Firebase Auth
+- **Free tier**: Generous free usage limits
 
 ## AI Configuration (Optional)
 
@@ -171,42 +171,43 @@ feedback-genie/
 
 ### Common Issues
 
-**1. Database Connection Error**
+**1. Firebase Connection Error**
 ```
-Error: Can't reach database server
+Error: Firebase configuration not found
 ```
-- For SQLite: Ensure the prisma directory exists
-- Run `npx prisma db push` to create the database
-- Check file permissions in the project directory
+- Ensure all Firebase environment variables are set in `.env.local`
+- Check that your Firebase project has Firestore enabled
+- Verify your Firebase project ID and API keys are correct
 
 **2. Missing Dependencies Error**
 ```
-Module not found: Can't resolve '@trpc/next'
+Module not found: Can't resolve 'firebase/app'
 ```
 - Run `npm install` to ensure all packages are installed
 - Clear `node_modules` and run `npm install` again
 
-**3. Prisma Generation Error**
+**3. API Route Error**
 ```
-Environment variable not found: DATABASE_URL
+Error: 500 Internal Server Error
 ```
-- For SQLite: No environment variable needed
-- Ensure `prisma/schema.prisma` has correct datasource configuration
-- Run `npx prisma generate` to create the client
+- Check that Firebase is properly initialized in `lib/firebase.ts`
+- Ensure your Firebase project has the correct security rules
+- Check browser console and server logs for detailed error messages
 
 **4. Build Errors**
 ```
 Type error: Cannot find module
 ```
-- Run `npx prisma generate` to generate types
-- Check that all imports are correct
+- Check that all imports are correct, especially after migration from tRPC
+- Run `npm run type-check` to identify TypeScript issues
+- Ensure Firebase types are properly installed
 
 ### Getting Help
 
 1. **Check logs**: Console and terminal output
-2. **Database issues**: Use `npm run db:studio` to inspect data
+2. **Database issues**: Use Firebase Console to inspect Firestore data
 3. **Type errors**: Run `npm run type-check`
-4. **Environment**: Verify all required variables are set
+4. **Environment**: Verify all Firebase variables are set in `.env.local`
 
 ### Reset Everything
 
@@ -219,12 +220,11 @@ rm -rf node_modules .next
 # Reinstall dependencies  
 npm install
 
-# Reset database
-npx prisma db push --force-reset
-
-# Regenerate Prisma client
-npx prisma generate
+# Clear Firebase local data (if using Firebase emulator)
+firebase emulators:start --only firestore --reset-data
 ```
+
+For production reset, clear your Firestore database through the Firebase Console.
 
 ## Production Deployment
 
