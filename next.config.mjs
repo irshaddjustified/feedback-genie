@@ -9,7 +9,6 @@ const nextConfig = {
     unoptimized: true,
   },
   experimental: {
-    reactCompiler: true,
     turbo: {
       rules: {
         '*.svg': {
