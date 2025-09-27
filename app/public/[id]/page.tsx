@@ -16,6 +16,8 @@ import { mockSurveys } from "@/lib/mock-data"
 import { analyzeSentiment } from "@/lib/ai-service"
 import type { Question } from "@/lib/types"
 import { Sparkles, Send, CheckCircle } from "lucide-react"
+import { db } from "@/lib/firebase";
+import { collection, addDoc } from "firebase/firestore";
 
 export default function PublicSurvey() {
   const params = useParams()
@@ -77,7 +79,14 @@ export default function PublicSurvey() {
 
       console.log("New response:", newResponse)
 
-      setIsSubmitted(true)
+      try {
+        const docRef = await addDoc(collection(db, "responses"), newResponse);
+        console.log("Document successfully written with ID: ", docRef.id);
+        setIsSubmitted(true)
+      } catch (e) {
+        console.error("Error adding document: ", e);
+        throw new Error("Failed to submit survey response.");
+      }
     } catch (error) {
       console.error("Error submitting response:", error)
     } finally {

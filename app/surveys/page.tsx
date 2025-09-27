@@ -7,8 +7,13 @@ import { Badge } from "@/components/ui/badge"
 import { mockSurveys, mockResponses } from "@/lib/mock-data"
 import { Eye, BarChart3, Calendar, ExternalLink } from "lucide-react"
 import Link from "next/link"
+import { useState } from "react"
+import { useRouter } from "next/navigation";
 
 export default function SurveysPage() {
+  const router = useRouter();
+  const [requiredAuth, setrequiredAuth] = useState<any>(true);
+
   const getSurveyStats = (surveyId: string) => {
     const responses = mockResponses.filter((r) => r.surveyId === surveyId)
     const positiveCount = responses.filter((r) => r.sentiment === "positive").length
@@ -17,6 +22,14 @@ export default function SurveysPage() {
       positiveRate: responses.length > 0 ? Math.round((positiveCount / responses.length) * 100) : 0,
     }
   }
+
+  const handleClick = async (surveyId: any) => {
+    if (requiredAuth) {
+      router.push(`/public/auth?redirect=${encodeURIComponent(`/public/${surveyId}`)}`);
+    } else {
+      router.push(`/public/${surveyId}`);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -90,12 +103,12 @@ export default function SurveysPage() {
                           Analytics
                         </Button>
                       </Link>
-                      <Link href={`/public/${survey.id}`} className="flex-1">
-                        <Button className="w-full">
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          Public Link
-                        </Button>
-                      </Link>
+                      {/* <Link href={`/public/${survey.id}`} className="flex-1"> */}
+                      <Button className="w-full flex-1" onClick={() => handleClick(survey.id)}>
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Public Link
+                      </Button>
+                      {/* </Link> */}
                     </div>
                   </div>
                 </CardContent>
