@@ -249,25 +249,40 @@ export const authService = {
   // Sign in with email and password
   async signInWithEmail(email: string, password: string) {
     try {
+      console.log('Attempting login with:', { email: email.toLowerCase().trim() });
+      
       // Check for hardcoded super admin credentials first
-      const adminEmail = process.env.ADMIN_EMAIL || 'admin@insighture.com';
+      const adminEmail = process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@insighture.com';
       const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
       
       if (email.toLowerCase().trim() === adminEmail.toLowerCase().trim() && password === adminPassword) {
-        // Create a mock Firebase user for the super admin
-        const mockUser = {
+        console.log('Hardcoded admin credentials matched, creating super admin user');
+        
+        // Return super admin user object
+        const superAdminUser = {
           uid: 'super-admin-uid',
           email: adminEmail,
           displayName: 'Super Admin',
-          emailVerified: true,
-          isAnonymous: false
+          role: 'super_admin' as const,
+          organizationDomain: 'insighture.com',
+          permissions: [...DEFAULT_PERMISSIONS.super_admin],
+          isAnonymous: false,
+          isEmailVerified: true,
+          lastLoginAt: new Date(),
+          createdAt: new Date()
         };
         
-        // Return super admin user object
+        console.log('Created super admin user:', superAdminUser);
+        return superAdminUser;
+      }
+      
+      // Check for demo credentials
+      if (email.toLowerCase().trim() === DEMO_CREDENTIALS.super_admin.email && password === DEMO_CREDENTIALS.super_admin.password) {
+        console.log('Demo super admin credentials matched');
         return {
-          uid: mockUser.uid,
-          email: mockUser.email,
-          displayName: mockUser.displayName,
+          uid: 'demo-super-admin-uid',
+          email: DEMO_CREDENTIALS.super_admin.email,
+          displayName: DEMO_CREDENTIALS.super_admin.displayName,
           role: 'super_admin' as const,
           organizationDomain: 'insighture.com',
           permissions: [...DEFAULT_PERMISSIONS.super_admin],
@@ -278,7 +293,40 @@ export const authService = {
         };
       }
       
-      // Otherwise try Firebase authentication
+      if (email.toLowerCase().trim() === DEMO_CREDENTIALS.admin.email && password === DEMO_CREDENTIALS.admin.password) {
+        console.log('Demo admin credentials matched');
+        return {
+          uid: 'demo-admin-uid',
+          email: DEMO_CREDENTIALS.admin.email,
+          displayName: DEMO_CREDENTIALS.admin.displayName,
+          role: 'admin' as const,
+          organizationDomain: 'company.com',
+          permissions: [...DEFAULT_PERMISSIONS.admin],
+          isAnonymous: false,
+          isEmailVerified: true,
+          lastLoginAt: new Date(),
+          createdAt: new Date()
+        };
+      }
+      
+      if (email.toLowerCase().trim() === DEMO_CREDENTIALS.owner.email && password === DEMO_CREDENTIALS.owner.password) {
+        console.log('Demo owner credentials matched');
+        return {
+          uid: 'demo-owner-uid',
+          email: DEMO_CREDENTIALS.owner.email,
+          displayName: DEMO_CREDENTIALS.owner.displayName,
+          role: 'owner' as const,
+          organizationDomain: 'company.com',
+          permissions: [...DEFAULT_PERMISSIONS.owner],
+          isAnonymous: false,
+          isEmailVerified: true,
+          lastLoginAt: new Date(),
+          createdAt: new Date()
+        };
+      }
+      
+      console.log('No hardcoded credentials matched, trying Firebase authentication');
+      // Otherwise try Firebase authentication  
       const result = await signInWithEmailAndPassword(auth, email, password);
       return await convertFirebaseUser(result.user);
     } catch (error) {

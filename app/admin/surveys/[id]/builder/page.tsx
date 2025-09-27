@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
-import AdminAuthGuard from '@/components/auth/AdminAuthGuard'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -21,6 +20,7 @@ import {
 } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
 import { toast } from 'sonner'
+import { SurveyQRDialog } from '@/components/survey/SurveyQRDialog'
 
 // Dynamically import SurveyJS components to avoid SSR issues
 const SurveyCreator = dynamic(() => import('@/components/survey/SurveyCreator'), {
@@ -189,8 +189,7 @@ export default function SurveyBuilderPage() {
   }
 
   return (
-    <AdminAuthGuard>
-      <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b bg-card">
         <div className="flex h-16 items-center justify-between px-6">
@@ -215,6 +214,12 @@ export default function SurveyBuilderPage() {
           </div>
           
           <div className="flex items-center gap-2">
+            <SurveyQRDialog
+              surveyId={survey.id}
+              shareLink={survey.shareLink}
+              surveyTitle={survey.title}
+            />
+            
             <Button
               variant="outline"
               size="sm"
@@ -403,7 +408,6 @@ export default function SurveyBuilderPage() {
           </TabsContent>
         </Tabs>
       </div>
-      </div>
-    </AdminAuthGuard>
+    </div>
   )
 }

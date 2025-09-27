@@ -10,6 +10,21 @@ export function useFirebaseAuth() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Check for stored demo user first (client-side only)
+    if (typeof window !== 'undefined') {
+      const storedUser = localStorage.getItem('demo-user');
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser) as AppUser;
+          setUser(parsedUser);
+          setLoading(false);
+          return;
+        } catch (e) {
+          localStorage.removeItem('demo-user');
+        }
+      }
+    }
+
     const unsubscribe = authService.onAuthStateChanged((user) => {
       setUser(user);
       setLoading(false);
@@ -23,7 +38,14 @@ export function useFirebaseAuth() {
       setError(null);
       setLoading(true);
       const user = await authService.signInWithEmail(email, password);
-      setUser(user);
+      
+      if (user) {
+        // Store demo users in localStorage for persistence (client-side only)
+        if (typeof window !== 'undefined' && (user.email?.includes('company.com') || user.email?.includes('insighture.com'))) {
+          localStorage.setItem('demo-user', JSON.stringify(user));
+        }
+        setUser(user);
+      }
       return user;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Sign in failed';
@@ -85,6 +107,10 @@ export function useFirebaseAuth() {
   const signOut = async () => {
     try {
       setError(null);
+      // Clear demo user from localStorage (client-side only)
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('demo-user');
+      }
       await authService.signOut();
       setUser(null);
     } catch (error) {

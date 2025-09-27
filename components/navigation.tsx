@@ -34,6 +34,7 @@ interface NavigationProps {
 
 export function Navigation({ hideAdminElements = false }: NavigationProps) {
   const pathname = usePathname()
+  const isOnHomePage = pathname === '/'
   const { 
     user, 
     loading, 
@@ -52,16 +53,6 @@ export function Navigation({ hideAdminElements = false }: NavigationProps) {
       label: "Home",
       icon: Sparkles,
       show: true
-    },
-    {
-      href: "/chat",
-      label: "Chat",
-      icon: MessageCircle,
-    },
-    {
-      href: "/chat",
-      label: "Chat",
-      icon: MessageCircle,
     },
   ]
 
@@ -156,7 +147,7 @@ export function Navigation({ hideAdminElements = false }: NavigationProps) {
               <span className="text-xl font-bold text-foreground">FeedbackGenie</span>
             </Link>
 
-            {canAccessAdminPanel && (
+            {canAccessAdminPanel && !isOnHomePage && (
               <div className="flex space-x-4">
                 {navItems.map((item) => {
                   const Icon = item.icon
@@ -178,7 +169,7 @@ export function Navigation({ hideAdminElements = false }: NavigationProps) {
           </div>
 
           <div className="flex items-center space-x-4">
-            {canManageSurveys && (
+            {canManageSurveys && !isOnHomePage && (
               <Button asChild size="sm">
                 <Link href="/admin/surveys/create">
                   <Plus className="h-4 w-4 mr-2" />

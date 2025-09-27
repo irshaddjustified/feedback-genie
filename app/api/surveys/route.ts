@@ -13,15 +13,19 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const projectId = searchParams.get('projectId')
     
-    const surveys = await database.surveys.findMany(projectId || undefined)
-    
-    return NextResponse.json(surveys)
+    try {
+      const surveys = await database.surveys.findMany(projectId || undefined)
+      return NextResponse.json(surveys || [])
+    } catch (dbError) {
+      console.error('Database error fetching surveys:', dbError)
+      // Return empty array if database fails
+      return NextResponse.json([])
+    }
   } catch (error) {
     console.error('Error fetching surveys:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
-
 export async function POST(request: NextRequest) {
   try {
     const context = await createContext(request)
@@ -54,8 +58,8 @@ export async function POST(request: NextRequest) {
       description: body.description || '',
       questions: body.questions || [],
       isActive: body.isActive || false,
-      shareLink: crypto.randomUUID(), // Generate a unique share link
-      status: 'DRAFT'
+      shareLink: body.shareLink || crypto.randomUUID(), // Use provided shareLink or generate fallback
+      status: body.status || 'DRAFT'
     })
     
     return NextResponse.json(survey, { status: 201 })

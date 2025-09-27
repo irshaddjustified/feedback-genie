@@ -223,23 +223,26 @@ export default function PublicFeedbackPage() {
     setResponses(prev => ({ ...prev, [questionName]: value }))
     
     // Trigger AI analysis for text inputs
-    const question = displaySurvey.pages[currentPage]?.elements.find(q => q.name === questionName)
+    const currentPageData = displaySurvey.pages?.[currentPage]
+    if (!currentPageData) return
+    
+    const question = currentPageData.elements?.find(q => q.name === questionName)
     if (question?.type === 'comment' && typeof value === 'string') {
       debouncedAnalyzeText(questionName, value)
     }
   }
 
   const calculateProgress = () => {
-    const totalPages = displaySurvey.pages.length
-    return Math.round(((currentPage + 1) / totalPages) * 100)
+    const totalPages = displaySurvey.pages?.length || 0
+    return totalPages > 0 ? Math.round(((currentPage + 1) / totalPages) * 100) : 0
   }
 
   const calculateCompletionRate = () => {
     let totalQuestions = 0
     let answeredQuestions = 0
 
-    displaySurvey.pages.forEach(page => {
-      page.elements.forEach(question => {
+    displaySurvey.pages?.forEach(page => {
+      page.elements?.forEach(question => {
         totalQuestions++
         if (responses[question.name]) {
           answeredQuestions++
@@ -312,8 +315,8 @@ export default function PublicFeedbackPage() {
     )
   }
 
-  const currentPageData = displaySurvey.pages[currentPage]
-  const isLastPage = currentPage === displaySurvey.pages.length - 1
+  const currentPageData = displaySurvey.pages?.[currentPage]
+  const isLastPage = currentPage === (displaySurvey.pages?.length || 0) - 1
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -431,41 +434,47 @@ export default function PublicFeedbackPage() {
         {/* Survey Questions */}
         <Card className="mb-6">
           <CardContent className="pt-6">
-            <div className="space-y-6">
-              {currentPageData?.elements.map((question, index) => (
-                <div key={question.name} className="relative">
-                  <QuestionRenderer
-                    question={question}
-                    value={responses[question.name]}
-                    onChange={(value) => handleValueChange(question.name, value)}
-                  />
-                  
-                  {/* AI Suggestions for text questions */}
-                  {question.type === 'comment' && aiSuggestions.length > 0 && (
-                    <div className="mt-3 space-y-2">
-                      {aiSuggestions.map((suggestion, i) => (
-                        <Alert key={i} className="bg-blue-50 border-blue-200">
-                          <HelpCircle className="h-4 w-4" />
-                          <AlertDescription className="flex items-center gap-2">
-                            <Lightbulb className="h-3 w-3" />
-                            {suggestion}
-                          </AlertDescription>
-                        </Alert>
-                      ))}
-                    </div>
-                  )}
-                  
-                  {/* Sentiment Indicator */}
-                  {question.type === 'comment' && 
-                   responses[question.name]?.length > 50 && 
-                   currentSentiment > 0 && (
-                    <div className="absolute -right-12 top-0">
-                      <SentimentIndicator score={currentSentiment} />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+            {!currentPageData ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No questions available for this page.</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {currentPageData?.elements?.map((question, index) => (
+                  <div key={question.name} className="relative">
+                    <QuestionRenderer
+                      question={question}
+                      value={responses[question.name]}
+                      onChange={(value) => handleValueChange(question.name, value)}
+                    />
+                    
+                    {/* AI Suggestions for text questions */}
+                    {question.type === 'comment' && aiSuggestions.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {aiSuggestions.map((suggestion, i) => (
+                          <Alert key={i} className="bg-blue-50 border-blue-200">
+                            <HelpCircle className="h-4 w-4" />
+                            <AlertDescription className="flex items-center gap-2">
+                              <Lightbulb className="h-3 w-3" />
+                              {suggestion}
+                            </AlertDescription>
+                          </Alert>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Sentiment Indicator */}
+                    {question.type === 'comment' && 
+                     responses[question.name]?.length > 50 && 
+                     currentSentiment > 0 && (
+                      <div className="absolute -right-12 top-0">
+                        <SentimentIndicator score={currentSentiment} />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -501,7 +510,7 @@ export default function PublicFeedbackPage() {
           ) : (
             <Button 
               onClick={() => setCurrentPage(prev => prev + 1)}
-              disabled={currentPage >= displaySurvey.pages.length - 1}
+              disabled={currentPage >= (displaySurvey.pages?.length || 0) - 1}
             >
               Next
               <ArrowRight className="h-4 w-4 ml-2" />

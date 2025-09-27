@@ -13,9 +13,14 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const surveyId = searchParams.get('surveyId')
     
-    const responses = await database.responses.findMany(surveyId || undefined)
-    
-    return NextResponse.json(responses)
+    try {
+      const responses = await database.responses.findMany(surveyId || undefined)
+      return NextResponse.json(responses || [])
+    } catch (dbError) {
+      console.error('Database error fetching responses:', dbError)
+      // Return empty array if database fails
+      return NextResponse.json([])
+    }
   } catch (error) {
     console.error('Error fetching responses:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

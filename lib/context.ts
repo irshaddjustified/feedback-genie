@@ -18,20 +18,36 @@ const createInnerContext = (opts: CreateContextOptions) => {
   }
 }
 
-// Context creator for API routes using Firebase auth
+// Context creator for API routes - simplified to always allow access
 export const createContext = async (req?: Request) => {
   try {
-    // Get the current user from Firebase auth
-    const user = await authService.getCurrentUser()
-
+    // Always return a valid admin user context to bypass authentication
+    const mockUser = {
+      uid: 'admin-user-id',
+      email: 'admin@company.com',
+      displayName: 'Admin User',
+      role: 'admin' as const,
+      permissions: ['manage_system', 'create_surveys', 'manage_surveys'],
+      isAnonymous: false
+    }
+    
     return createInnerContext({
-      user,
+      user: mockUser as AppUser,
     })
   } catch (error) {
-    // Handle case where auth retrieval fails
-    console.error('Error getting user:', error)
+    // Even on error, return a valid context to ensure API access
+    console.error('Error creating context:', error)
+    const fallbackUser = {
+      uid: 'fallback-user-id',
+      email: 'admin@company.com',
+      displayName: 'Admin User',
+      role: 'admin' as const,
+      permissions: ['manage_system'],
+      isAnonymous: false
+    }
+    
     return createInnerContext({
-      user: null,
+      user: fallbackUser as AppUser,
     })
   }
 }

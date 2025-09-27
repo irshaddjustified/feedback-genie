@@ -13,20 +13,34 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const organizationId = searchParams.get('organizationId')
     
-    const clients = await database.clients.findMany(organizationId || undefined)
-    
-    // Add project count for each client
-    const clientsWithProjectCount = await Promise.all(
-      clients.map(async (client) => {
-        const projects = await database.projects.findMany(client.id)
-        return {
-          ...client,
-          projectCount: projects.length
-        }
-      })
-    )
-    
-    return NextResponse.json(clientsWithProjectCount)
+    try {
+      const clients = await database.clients.findMany(organizationId || undefined)
+      
+      // Add project count for each client
+      const clientsWithProjectCount = await Promise.all(
+        clients.map(async (client) => {
+          try {
+            const projects = await database.projects.findMany(client.id)
+            return {
+              ...client,
+              projectCount: projects.length
+            }
+          } catch (err) {
+            console.warn('Error fetching projects for client:', client.id, err)
+            return {
+              ...client,
+              projectCount: 0
+            }
+          }
+        })
+      )
+      
+      return NextResponse.json(clientsWithProjectCount || [])
+    } catch (dbError) {
+      console.error('Database error fetching clients:', dbError)
+      // Return empty array if database fails
+      return NextResponse.json([])
+    }
   } catch (error) {
     console.error('Error fetching clients:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

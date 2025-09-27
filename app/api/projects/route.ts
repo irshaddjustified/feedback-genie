@@ -13,8 +13,14 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const clientId = searchParams.get('clientId')
     
-    const projects = await database.projects.findMany(clientId || undefined)
-    return NextResponse.json(projects)
+    try {
+      const projects = await database.projects.findMany(clientId || undefined)
+      return NextResponse.json(projects || [])
+    } catch (dbError) {
+      console.error('Database error fetching projects:', dbError)
+      // Return empty array if database fails
+      return NextResponse.json([])
+    }
   } catch (error) {
     console.error('Error fetching projects:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

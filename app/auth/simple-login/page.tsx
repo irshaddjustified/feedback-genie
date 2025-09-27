@@ -16,7 +16,7 @@ const ADMIN_CREDENTIALS: Record<string, string> = {
   'owner@company.com': 'owner123'
 }
 
-export default function AdminLoginPage() {
+export default function SimpleLoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [email, setEmail] = useState('admin@company.com')
@@ -57,7 +57,6 @@ export default function AdminLoginPage() {
       setIsLoading(false)
     }
   }
-
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">

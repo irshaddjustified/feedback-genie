@@ -1,10 +1,18 @@
 export interface Question {
   id: string
-  type: "text" | "textarea" | "select" | "radio" | "checkbox" | "rating"
-  text: string
-  options?: string[]
+  type: "text" | "comment" | "radiogroup" | "checkbox" | "dropdown" | "rating" | "boolean"
+  name: string
+  title: string
+  choices?: string[]
   required: boolean
-  order: number
+  placeholder?: string
+  rateMin?: number
+  rateMax?: number
+  rows?: number
+  order?: number
+  // Legacy fields for backward compatibility
+  text?: string
+  options?: string[]
 }
 
 export interface Organization {

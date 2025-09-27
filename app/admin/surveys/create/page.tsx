@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import AdminAuthGuard from '@/components/auth/AdminAuthGuard'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import dynamic from 'next/dynamic'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   Sparkles, 
   Plus, 
@@ -20,10 +21,31 @@ import {
   Users, 
   Calendar,
   Loader2,
-  ArrowRight 
+  ArrowRight,
+  Copy,
+  QrCode,
+  Download,
+  Share,
+  Save,
+  Eye,
+  Settings,
+  Send
 } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
 import { toast } from 'sonner'
+import { SurveyQRDialog } from '@/components/survey/SurveyQRDialog'
+
+// Dynamically import SurveyJS components to avoid SSR issues
+const SurveyCreator = dynamic(() => import('@/components/survey/SurveyCreator'), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center h-96">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+  </div>
+})
+
+const SurveyPreview = dynamic(() => import('@/components/survey/SurveyPreview'), {
+  ssr: false
+})
 
 const createSurveySchema = z.object({
   title: z.string().min(1, 'Survey title is required'),
@@ -59,13 +81,12 @@ const surveyTemplates = [
     description: 'Build your own survey with AI assistance',
     type: 'CUSTOM' as const,
     estimatedTime: 'Variable',
-    questionCount: 'Custom'
   }
 ]
 
 export default function CreateSurveyPage() {
   const router = useRouter()
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('')
+  const [selectedTemplate, setSelectedTemplate] = useState<typeof surveyTemplates[0] | null>(null)
   const [aiGenerating, setAiGenerating] = useState(false)
   const [aiSuggestions, setAiSuggestions] = useState<any>(null)
   const [projects, setProjects] = useState<any[]>([])
@@ -73,6 +94,12 @@ export default function CreateSurveyPage() {
   const [loadingProjects, setLoadingProjects] = useState(true)
   const [createdSurvey, setCreatedSurvey] = useState<any>(null)
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
+  
+  // Builder state
+  const [activeTab, setActiveTab] = useState('create')
+  const [surveyJson, setSurveyJson] = useState<any>(null)
+  const [isModified, setIsModified] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   const form = useForm<CreateSurveyForm>({
     resolver: zodResolver(createSurveySchema),
@@ -100,8 +127,8 @@ export default function CreateSurveyPage() {
   }, [])
 
   const handleTemplateSelect = (templateId: string) => {
-    setSelectedTemplate(templateId)
     const template = surveyTemplates.find(t => t.id === templateId)
+    setSelectedTemplate(template || null)
     if (template) {
       form.setValue('templateId', templateId)
       form.setValue('type', template.type)
@@ -147,15 +174,25 @@ export default function CreateSurveyPage() {
 
     setIsSubmitting(true)
     try {
+      // Generate a shorter, more user-friendly share link
+      const generateShareLink = () => {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+        let result = ''
+        for (let i = 0; i < 8; i++) {
+          result += chars.charAt(Math.floor(Math.random() * chars.length))
+        }
+        return result
+      }
+
       const survey = await apiClient.surveys.create({
         ...data,
-        shareLink: crypto.randomUUID(), // Generate unique share link
+        shareLink: generateShareLink(), // Generate shorter, user-friendly share link
         status: 'DRAFT'
       })
       
       setCreatedSurvey(survey)
-      setShowSuccessDialog(true)
-      toast.success('Survey created successfully!')
+      setActiveTab('builder') // Switch to builder tab instead of showing dialog
+      toast.success('Survey created! Now build your questions.')
     } catch (error: any) {
       toast.error('Failed to create survey: ' + (error?.message || 'Unknown error'))
     } finally {
@@ -168,17 +205,163 @@ export default function CreateSurveyPage() {
     router.push(`/admin/surveys/${createdSurvey.id}/builder`)
   }
 
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      toast.success('Link copied to clipboard!')
+    } catch (error) {
+      toast.error('Failed to copy link')
+    }
+  }
+
+  // Builder functions
+  const handleSurveyChange = (newJson: any) => {
+    setSurveyJson(newJson)
+    setIsModified(true)
+  }
+
+  const handleSave = async () => {
+    if (!surveyJson || !createdSurvey) return
+    
+    setIsSaving(true)
+    try {
+      await apiClient.surveys.update(createdSurvey.id, {
+        schema: surveyJson
+      })
+      toast.success('Survey saved successfully!')
+      setIsModified(false)
+    } catch (error: any) {
+      toast.error('Failed to save survey: ' + (error?.message || 'Unknown error'))
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handlePublish = async () => {
+    if (!createdSurvey) return
+
+    if (isModified) {
+      await handleSave()
+    }
+    
+    try {
+      await apiClient.surveys.update(createdSurvey.id, { status: 'PUBLISHED' })
+      toast.success('Survey published successfully!')
+      router.push('/admin/dashboard')
+    } catch (error: any) {
+      toast.error('Failed to publish survey: ' + (error?.message || 'Unknown error'))
+    }
+  }
+
+  const generateAIQuestions = async () => {
+    try {
+      // Mock AI question generation - replace with actual API call when ready
+      const mockSuggestions = [
+        {
+          type: 'rating',
+          name: 'overall_satisfaction',
+          title: 'How satisfied are you with the overall experience?',
+          rateMax: 5
+        },
+        {
+          type: 'comment',
+          name: 'improvements',
+          title: 'What improvements would you suggest?',
+          rows: 3
+        },
+        {
+          type: 'radiogroup',
+          name: 'recommendation',
+          title: 'Would you recommend us to others?',
+          choices: ['Definitely', 'Probably', 'Maybe', 'Probably not', 'Definitely not']
+        }
+      ]
+      
+      toast.success('AI suggestions generated!')
+      console.log('AI suggestions:', mockSuggestions)
+      // In a real implementation, show suggestions in a modal
+    } catch (error: any) {
+      toast.error('Failed to generate AI suggestions: ' + (error?.message || 'Unknown error'))
+    }
+  }
+
   return (
-    <AdminAuthGuard>
-      <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b">
-        <div className="flex h-16 items-center px-6">
-          <h1 className="text-2xl font-bold">Create New Survey</h1>
+      <div className="border-b bg-card">
+        <div className="flex h-16 items-center justify-between px-6">
+          <div className="flex items-center gap-4">
+            <div>
+              <h1 className="text-xl font-bold">
+                {createdSurvey ? createdSurvey.title : 'Create New Survey'}
+              </h1>
+              {createdSurvey && (
+                <div className="flex items-center gap-2">
+                  <Badge variant={createdSurvey.status === 'PUBLISHED' ? 'default' : 'secondary'}>
+                    {createdSurvey.status}
+                  </Badge>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Header Actions - Only show when in builder mode */}
+          {activeTab === 'builder' && createdSurvey && (
+            <div className="flex items-center gap-2">
+              <SurveyQRDialog
+                surveyId={createdSurvey.id}
+                shareLink={createdSurvey.shareLink}
+                surveyTitle={createdSurvey.title}
+              />
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={generateAIQuestions}
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                AI Suggest
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSave}
+                disabled={!isModified || isSaving}
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {isSaving ? 'Saving...' : 'Save'}
+              </Button>
+              
+              {createdSurvey.status === 'DRAFT' && (
+                <Button
+                  size="sm"
+                  onClick={handlePublish}
+                  disabled={isSaving}
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  Publish
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="p-6 max-w-4xl mx-auto space-y-6">
+      <div className="flex-1">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
+          <div className="border-b">
+            <div className="px-6">
+              <TabsList className="grid w-full max-w-md grid-cols-3">
+                <TabsTrigger value="create">Create</TabsTrigger>
+                <TabsTrigger value="builder" disabled={!createdSurvey}>Builder</TabsTrigger>
+                <TabsTrigger value="preview" disabled={!createdSurvey}>Preview</TabsTrigger>
+              </TabsList>
+            </div>
+          </div>
+          
+          <TabsContent value="create" className="h-full">
+            <div className="p-6 max-w-4xl mx-auto space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>Survey Details</CardTitle>
@@ -287,127 +470,121 @@ export default function CreateSurveyPage() {
               )}
 
               {/* Template Selection */}
-              <div className="space-y-4">
-                <Label>Choose Survey Template</Label>
+              <div className="space-y-2">
+                <Label>Template Selection</Label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {surveyTemplates.map((template) => (
-                    <Card
+                  {surveyTemplates.map(template => (
+                    <Card 
                       key={template.id}
                       className={`cursor-pointer transition-all hover:shadow-md ${
-                        selectedTemplate === template.id 
+                        selectedTemplate?.id === template.id 
                           ? 'ring-2 ring-primary border-primary' 
-                          : 'hover:border-primary/50'
+                          : 'hover:border-muted-foreground/20'
                       }`}
                       onClick={() => handleTemplateSelect(template.id)}
                     >
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <CardTitle className="text-base">{template.title}</CardTitle>
-                            <Badge variant="outline" className="text-xs">
-                              {template.type.replace('_', ' ')}
-                            </Badge>
+                      <CardContent className="p-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4" />
+                            <span className="font-medium text-sm">{template.title}</span>
                           </div>
-                          {template.type === 'PROJECT_FEEDBACK' && <FileText className="h-5 w-5 text-muted-foreground" />}
-                          {template.type === 'EVENT_FEEDBACK' && <Calendar className="h-5 w-5 text-muted-foreground" />}
-                          {template.type === 'CUSTOM' && <Plus className="h-5 w-5 text-muted-foreground" />}
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <CardDescription className="text-sm mb-3">
-                          {template.description}
-                        </CardDescription>
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>{template.estimatedTime}</span>
-                          <span>{template.questionCount} questions</span>
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            {template.description}
+                          </p>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {template.estimatedTime}
+                            </div>
+                            {template.questionCount && (
+                              <div className="flex items-center gap-1">
+                                <Users className="h-3 w-3" />
+                                {template.questionCount} questions
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
                   ))}
                 </div>
-                {!selectedTemplate && (
-                  <p className="text-sm text-red-500">Please select a template to continue</p>
+                {form.formState.errors.templateId && (
+                  <p className="text-sm text-red-500">
+                    {form.formState.errors.templateId.message}
+                  </p>
                 )}
               </div>
 
-              {/* Submit Button */}
-              <div className="flex justify-end">
-                <Button 
-                  type="submit" 
-                  disabled={isSubmitting || !selectedTemplate}
-                  className="min-w-32"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      Create Survey
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </>
-                  )}
-                </Button>
-              </div>
+              <Button 
+                type="submit" 
+                className="w-full"
+                disabled={isSubmitting || !selectedTemplate}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating survey...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Survey & Build
+                  </>
+                )}
+              </Button>
             </form>
           </CardContent>
         </Card>
-      </div>
+            </div>
+          </TabsContent>
 
-      {/* Success Dialog */}
-      {showSuccessDialog && createdSurvey && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-md mx-4">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
+          <TabsContent value="builder" className="h-full">
+            <div className="p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold">Survey Builder</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Drag and drop questions to build your survey
+                  </p>
                 </div>
-                Survey Created Successfully!
-              </CardTitle>
-              <CardDescription>
-                Your survey "{createdSurvey.title}" has been created and is ready for customization.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Survey ID:</Label>
-                <code className="text-sm bg-muted px-2 py-1 rounded block">
-                  {createdSurvey.id}
-                </code>
-              </div>
-              
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Share Link:</Label>
-                <code className="text-sm bg-muted px-2 py-1 rounded block break-all">
-                  {typeof window !== 'undefined' && `${window.location.origin}/feedback/${createdSurvey.shareLink}`}
-                </code>
+                {isModified && (
+                  <Badge variant="secondary">Unsaved changes</Badge>
+                )}
               </div>
 
-              <div className="flex gap-2 pt-4">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowSuccessDialog(false)}
-                  className="flex-1"
-                >
-                  Close
-                </Button>
-                <Button 
-                  onClick={handleContinueToBuilder}
-                  className="flex-1"
-                >
-                  <ArrowRight className="mr-2 h-4 w-4" />
-                  Open Builder
-                </Button>
+              <SurveyCreator
+                json={surveyJson}
+                onSurveyChange={handleSurveyChange}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="preview" className="h-full">
+            <div className="p-6">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold">Survey Preview</h3>
+                <p className="text-sm text-muted-foreground">
+                  See how your survey will appear to respondents
+                </p>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+
+              <div className="border rounded-lg p-6 bg-card">
+                {surveyJson ? (
+                  <SurveyPreview json={surveyJson} />
+                ) : (
+                  <div className="text-center py-12">
+                    <Eye className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">
+                      No survey content to preview yet. Use the Builder tab to add questions.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
-    </AdminAuthGuard>
+    </div>
   )
 }

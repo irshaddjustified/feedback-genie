@@ -1,5 +1,8 @@
 // AI Service Implementation for Multi-Model Analysis
 // This provides a unified interface for sentiment analysis, categorization, and insights
+// Updated to use Google Gemini as the primary AI model
+
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
 export interface SentimentResult {
   score: number // 0-1 scale
@@ -49,17 +52,29 @@ class AIService {
     google?: string
   }
 
+  private gemini: GoogleGenerativeAI | null = null
+
   constructor() {
     this.apiKeys = {
-      openai: process.env.GOOGLE_GEMINI_KEY,
+      openai: process.env.OPENAI_API_KEY,
       anthropic: process.env.ANTHROPIC_API_KEY,
       google: process.env.GOOGLE_GEMINI_KEY
+    }
+    
+    // Initialize Gemini as primary model
+    if (this.apiKeys.google) {
+      this.gemini = new GoogleGenerativeAI(this.apiKeys.google)
     }
   }
 
   async analyzeSentiment(text: string): Promise<SentimentResult> {
     try {
-      // Try OpenAI first
+      // Try Gemini first as primary model
+      if (this.apiKeys.google && this.gemini) {
+        return await this.analyzeWithGemini(text)
+      }
+      
+      // Fallback to OpenAI
       if (this.apiKeys.openai) {
         return await this.analyzeWithOpenAI(text)
       }
@@ -67,11 +82,6 @@ class AIService {
       // Fallback to Anthropic
       if (this.apiKeys.anthropic) {
         return await this.analyzeWithAnthropic(text)
-      }
-      
-      // Final fallback to Google Gemini
-      if (this.apiKeys.google) {
-        return await this.analyzeWithGemini(text)
       }
       
       // If no API keys available, use rule-based analysis
@@ -270,13 +280,49 @@ class AIService {
   }
 
   private async analyzeWithGemini(text: string): Promise<SentimentResult> {
-    // Mock Google Gemini implementation
-    const sentiment = this.calculateBasicSentiment(text)
-    return {
-      score: sentiment,
-      label: this.getSentimentLabel(sentiment),
-      confidence: 0.80,
-      reasoning: 'Analyzed using Google Gemini model'
+    try {
+      if (!this.gemini) {
+        throw new Error('Gemini not initialized')
+      }
+      
+      const model = this.gemini.getGenerativeModel({ model: 'gemini-1.5-flash' })
+      
+      const prompt = `Analyze the sentiment of this feedback text. Respond with a JSON object containing:
+      - score: a number between 0 and 1 (0 = very negative, 1 = very positive)
+      - label: one of "VERY_POSITIVE", "POSITIVE", "NEUTRAL", "NEGATIVE", "VERY_NEGATIVE"
+      - confidence: a number between 0 and 1 indicating confidence in the analysis
+      - reasoning: a brief explanation of the analysis
+      
+      Text to analyze: "${text}"
+      
+      Respond with only valid JSON, no other text.`
+      
+      const result = await model.generateContent(prompt)
+      const response = await result.response
+      const responseText = response.text()
+      
+      try {
+        const parsed = JSON.parse(responseText.trim())
+        return {
+          score: Math.max(0, Math.min(1, parsed.score || 0.5)),
+          label: parsed.label || this.getSentimentLabel(parsed.score || 0.5),
+          confidence: Math.max(0, Math.min(1, parsed.confidence || 0.8)),
+          reasoning: parsed.reasoning || 'Analyzed using Google Gemini model'
+        }
+      } catch (parseError) {
+        console.warn('Failed to parse Gemini response, falling back to rule-based analysis')
+        throw parseError
+      }
+    } catch (error) {
+      console.error('Gemini analysis failed:', error)
+      // Fallback to rule-based analysis
+      const sentiment = this.calculateBasicSentiment(text)
+      return {
+        score: sentiment,
+        label: this.getSentimentLabel(sentiment),
+        confidence: 0.65,
+        reasoning: 'Rule-based sentiment analysis (Gemini unavailable)'
+      }
     }
   }
 

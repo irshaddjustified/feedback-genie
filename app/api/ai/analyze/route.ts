@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createContext } from '@/lib/context'
 import { database } from '@/lib/prisma'
+import { aiService } from '@/lib/ai/ai-service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,28 +20,34 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Mock AI analysis - replace with actual AI service calls
-    const analysis = {
+    // Use actual AI service powered by Google Gemini
+    const analysis = await aiService.analyzeComprehensive(text)
+    
+    // Transform to expected format
+    const result = {
       responseId,
-      sentimentScore: Math.random() * 2 - 1, // -1 to 1
-      sentimentLabel: ['VERY_NEGATIVE', 'NEGATIVE', 'NEUTRAL', 'POSITIVE', 'VERY_POSITIVE'][
-        Math.floor(Math.random() * 5)
-      ],
-      confidence: Math.random() * 0.5 + 0.5, // 0.5 to 1
-      categories: [
-        { name: 'Service Quality', score: Math.random() },
-        { name: 'User Experience', score: Math.random() },
-        { name: 'Support', score: Math.random() }
-      ],
-      keyPhrases: ['great service', 'easy to use', 'helpful staff'],
-      priority: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'][Math.floor(Math.random() * 4)],
-      modelUsed: 'mock-ai-v1',
-      processingTime: 150
+      sentimentScore: (analysis.sentiment.score * 2) - 1, // Convert 0-1 to -1 to 1 scale
+      sentimentLabel: analysis.sentiment.label,
+      confidence: analysis.sentiment.confidence,
+      categories: analysis.categories.map(cat => ({
+        name: cat.name,
+        score: cat.score
+      })),
+      keyPhrases: analysis.keyPhrases,
+      priority: analysis.priority,
+      modelUsed: 'google-gemini-1.5-flash',
+      processingTime: analysis.processingTime,
+      reasoning: analysis.sentiment.reasoning,
+      suggestedActions: analysis.suggestedActions,
+      topics: analysis.topics
     }
     
-    return NextResponse.json(analysis)
+    return NextResponse.json(result)
   } catch (error) {
     console.error('Error analyzing response:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Failed to analyze response',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }

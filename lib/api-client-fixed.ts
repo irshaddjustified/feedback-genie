@@ -121,14 +121,6 @@ class ApiClient {
       body: JSON.stringify({ responseId, text }),
     }),
   }
-
-  // Metrics
-  metrics = {
-    getAll: (filters?: { projectId?: string; clientId?: string; organizationId?: string }) => {
-      const query = filters ? `?${new URLSearchParams(Object.entries(filters).filter(([_, v]) => v)).toString()}` : ''
-      return this.request<any>(`/metrics${query}`)
-    },
-  }
 }
 
 export const apiClient = new ApiClient()

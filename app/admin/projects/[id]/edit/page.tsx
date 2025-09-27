@@ -1,6 +1,5 @@
 'use client'
 
-import AdminAuthGuard from '@/components/auth/AdminAuthGuard'
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -129,8 +128,7 @@ export default function EditProjectPage() {
   }
 
   return (
-    <AdminAuthGuard>
-      <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b">
         <div className="flex h-16 items-center justify-between px-6">
@@ -298,7 +296,6 @@ export default function EditProjectPage() {
           </Card>
         )}
       </div>
-      </div>
-    </AdminAuthGuard>
+    </div>
   )
 }

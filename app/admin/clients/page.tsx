@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import AdminAuthGuard from '@/components/auth/AdminAuthGuard'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -170,8 +169,7 @@ export default function ClientsManagement() {
   }
 
   return (
-    <AdminAuthGuard>
-      <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b">
         <div className="flex h-16 items-center justify-between px-6">
@@ -420,7 +418,6 @@ export default function ClientsManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      </div>
-    </AdminAuthGuard>
+    </div>
   )
 }

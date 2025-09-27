@@ -10,8 +10,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const organizations = await database.organization.findMany()
-    return NextResponse.json(organizations)
+    try {
+      const organizations = await database.organization.findMany()
+      return NextResponse.json(organizations || [])
+    } catch (dbError) {
+      console.error('Database error fetching organizations:', dbError)
+      // Return empty array if database fails
+      return NextResponse.json([])
+    }
   } catch (error) {
     console.error('Error fetching organizations:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

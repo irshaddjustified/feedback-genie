@@ -12,7 +12,7 @@ export default function AdminAuthGuard({ children, requiresAdmin = true }: Admin
   if (requiresAdmin) {
     return (
       <RoleGuard 
-        requiredRole="owner" 
+        requiredPermission={PERMISSIONS.CREATE_SURVEYS}
         redirectTo="/auth/login"
       >
         {children}

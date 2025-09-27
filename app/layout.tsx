@@ -32,12 +32,10 @@ export default function RootLayout({
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <body className="font-sans antialiased">
         <Providers>
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-            <Suspense>
-              {children}
-              <Analytics />
-            </Suspense>
-          </ThemeProvider>
+          <Suspense>
+            {children}
+            <Analytics />
+          </Suspense>
         </Providers>
       </body>
     </html>

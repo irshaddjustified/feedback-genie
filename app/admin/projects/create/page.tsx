@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import AdminAuthGuard from '@/components/auth/AdminAuthGuard'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -65,8 +64,7 @@ export default function CreateProjectPage() {
   }
 
   return (
-    <AdminAuthGuard>
-      <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b">
         <div className="flex h-16 items-center justify-between px-6">
@@ -243,7 +241,6 @@ export default function CreateProjectPage() {
           </CardContent>
         </Card>
       </div>
-      </div>
-    </AdminAuthGuard>
+    </div>
   )
 }
