@@ -334,7 +334,7 @@ export default function ClientProjectsManagement() {
       <div className="p-6 space-y-6">
         {/* Search */}
         <Card>
-          <CardContent className="pt-6">
+          <CardContent>
             <div className="flex items-center gap-2">
               <Search className="h-4 w-4 text-muted-foreground" />
               <Input

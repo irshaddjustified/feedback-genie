@@ -1,4 +1,6 @@
 // API client for Firebase-based hierarchy: Organization → Clients → Projects → Surveys → Responses
+import { getAuth } from 'firebase/auth'
+
 class ApiClient {
   private baseUrl: string
 
@@ -8,10 +10,24 @@ class ApiClient {
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}/api${endpoint}`
-    
+
+    // Get current user's ID token if available
+    let authHeaders = {}
+    try {
+      const auth = getAuth()
+      const user = auth.currentUser
+      if (user) {
+        const idToken = await user.getIdToken()
+        authHeaders = { 'Authorization': `Bearer ${idToken}` }
+      }
+    } catch (error) {
+      console.warn('Failed to get auth token:', error)
+    }
+
     const response = await fetch(url, {
       headers: {
         'Content-Type': 'application/json',
+        ...authHeaders,
         ...options.headers,
       },
       ...options,

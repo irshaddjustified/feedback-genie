@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { database } from '@/lib/prisma'
+import { database } from '@/lib/database'
 import { authService, saveUserToDatabase } from '@/lib/firebase'
 
 export async function POST(request: NextRequest) {

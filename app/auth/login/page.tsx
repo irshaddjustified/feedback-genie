@@ -151,7 +151,7 @@ export default function AdminLoginPage() {
         </div>
         
         <Card className="mt-8">
-          <CardHeader>
+          <CardHeader className='text-center'>
             <CardTitle>Admin Portal Sign In</CardTitle>
             <CardDescription>
               Sign in with super admin credentials or authorized Google account
@@ -164,66 +164,6 @@ export default function AdminLoginPage() {
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-              
-              {/* Email/Password Form */}
-              <form onSubmit={form.handleSubmit(handleEmailLogin)} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="admin@insighture.com"
-                    {...form.register('email')}
-                    className={form.formState.errors.email ? 'border-red-500' : ''}
-                  />
-                  {form.formState.errors.email && (
-                    <p className="text-sm text-red-500">
-                      {form.formState.errors.email.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Enter your password"
-                    {...form.register('password')}
-                    className={form.formState.errors.password ? 'border-red-500' : ''}
-                  />
-                  {form.formState.errors.password && (
-                    <p className="text-sm text-red-500">
-                      {form.formState.errors.password.message}
-                    </p>
-                  )}
-                </div>
-
-                <Button 
-                  type="submit" 
-                  className="w-full"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Signing in...
-                    </>
-                  ) : (
-                    'Sign In'
-                  )}
-                </Button>
-              </form>
-
-              {/* Divider */}
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
-                </div>
-              </div>
 
               {/* Google Sign-in */}
               <Button 
@@ -250,91 +190,6 @@ export default function AdminLoginPage() {
                 )}
               </Button>
               
-              {/* Demo Credentials Section */}
-              <div className="mt-6">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium text-gray-900">Demo Credentials</h3>
-                  <Link href="/demo">
-                    <Button variant="outline" size="sm">
-                      <ExternalLink className="h-3 w-3 mr-1" />
-                      Full Demo
-                    </Button>
-                  </Link>
-                </div>
-                
-                <div className="space-y-2 text-xs">
-                  <div className="flex items-center justify-between p-2 bg-yellow-50 rounded border">
-                    <div className="flex items-center gap-2">
-                      <Crown className="h-3 w-3 text-yellow-600" />
-                      <span className="font-medium">Super Admin:</span>
-                      <code className="bg-white px-1 rounded">{DEMO_CREDENTIALS.super_admin.email}</code>
-                      <span>/</span>
-                      <code className="bg-white px-1 rounded">{DEMO_CREDENTIALS.super_admin.password}</code>
-                    </div>
-                    <Button 
-                      size="sm" 
-                      variant="ghost"
-                      className="h-6 px-2"
-                      onClick={() => {
-                        form.setValue('email', DEMO_CREDENTIALS.super_admin.email)
-                        form.setValue('password', DEMO_CREDENTIALS.super_admin.password)
-                        toast.success('Demo credentials filled in!')
-                      }}
-                    >
-                      <Eye className="h-3 w-3" />
-                    </Button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-2 bg-blue-50 rounded border">
-                    <div className="flex items-center gap-2">
-                      <Shield className="h-3 w-3 text-blue-600" />
-                      <span className="font-medium">Admin:</span>
-                      <code className="bg-white px-1 rounded">{DEMO_CREDENTIALS.admin.email}</code>
-                      <span>/</span>
-                      <code className="bg-white px-1 rounded">{DEMO_CREDENTIALS.admin.password}</code>
-                    </div>
-                    <Button 
-                      size="sm" 
-                      variant="ghost"
-                      className="h-6 px-2"
-                      onClick={() => {
-                        form.setValue('email', DEMO_CREDENTIALS.admin.email)
-                        form.setValue('password', DEMO_CREDENTIALS.admin.password)
-                        toast.success('Demo credentials filled in!')
-                      }}
-                    >
-                      <Eye className="h-3 w-3" />
-                    </Button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-2 bg-green-50 rounded border">
-                    <div className="flex items-center gap-2">
-                      <Users className="h-3 w-3 text-green-600" />
-                      <span className="font-medium">Owner:</span>
-                      <code className="bg-white px-1 rounded">{DEMO_CREDENTIALS.owner.email}</code>
-                      <span>/</span>
-                      <code className="bg-white px-1 rounded">{DEMO_CREDENTIALS.owner.password}</code>
-                    </div>
-                    <Button 
-                      size="sm" 
-                      variant="ghost"
-                      className="h-6 px-2"
-                      onClick={() => {
-                        form.setValue('email', DEMO_CREDENTIALS.owner.email)
-                        form.setValue('password', DEMO_CREDENTIALS.owner.password)
-                        toast.success('Demo credentials filled in!')
-                      }}
-                    >
-                      <Eye className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-                
-                <div className="mt-3 text-center text-xs text-gray-500">
-                  Click the eye icon to auto-fill credentials • 
-                  <Link href="/demo" className="underline">Learn more about roles</Link>
-                </div>
-              </div>
             </div>
           </CardContent>
         </Card>

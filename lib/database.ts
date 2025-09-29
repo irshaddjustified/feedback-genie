@@ -1,18 +1,18 @@
 // Database service using Firebase Firestore
 // Hierarchy: Organization → Clients → Projects → Surveys → Responses
 import { db } from './firebase'
-import { 
-  collection, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  where, 
-  orderBy, 
-  limit 
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  orderBy,
+  limit
 } from 'firebase/firestore'
 
 export const database = {
@@ -55,7 +55,7 @@ export const database = {
       await deleteDoc(doc(db, 'users', id))
     }
   },
-  
+
   // Invitations (for admin invitation system)
   invitations: {
     create: async (data: any) => {
@@ -194,7 +194,7 @@ export const database = {
       await deleteDoc(doc(db, 'projects', id))
     }
   },
-  
+
   // Surveys (under projects)
   surveys: {
     create: async (data: any) => {
@@ -229,7 +229,7 @@ export const database = {
       await deleteDoc(doc(db, 'surveys', id))
     }
   },
-  
+
   // Responses (under surveys)
   responses: {
     create: async (data: any) => {
@@ -261,5 +261,5 @@ export const database = {
 // Add aliases for consistency with plural naming convention used in routes
 ;(database as any).organizations = database.organization
 
-// Export the database service as the default export for easy migration from Prisma
+// Export the database service as the default export
 export default database

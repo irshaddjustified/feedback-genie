@@ -339,7 +339,7 @@ export default function PublicFeedbackPage() {
         {/* Respondent Info (Optional) */}
         {currentPage === 0 && (
           <Card className="mb-6">
-            <CardContent className="pt-6">
+            <CardContent>
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <p className="font-medium">Your Details (Optional)</p>
@@ -430,7 +430,7 @@ export default function PublicFeedbackPage() {
 
         {/* Survey Questions */}
         <Card className="mb-6">
-          <CardContent className="pt-6">
+          <CardContent>
             <div className="space-y-6">
               {currentPageData?.elements.map((question, index) => (
                 <div key={question.name} className="relative">

@@ -1,19 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createContext } from '@/lib/context'
-import { database } from '@/lib/prisma'
+import { database } from '@/lib/database'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const context = await createContext(request)
-    
+
     if (!context.session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const organization = await database.organization.findById(params.id)
+    const { id } = await params
+    const organization = await database.organization.findById(id)
     
     if (!organization) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
@@ -28,23 +29,24 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const context = await createContext(request)
-    
+
     if (!context.session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const body = await request.json()
-    
+    const { id } = await params
+
     // Validate required fields
     if (!body.name) {
       return NextResponse.json({ error: 'Organization name is required' }, { status: 400 })
     }
 
-    const organization = await database.organization.update(params.id, {
+    const organization = await database.organization.update(id, {
       name: body.name,
       description: body.description || ''
     })
@@ -58,17 +60,19 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const context = await createContext(request)
-    
+
     if (!context.session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await params
+
     // Check if organization exists
-    const organization = await database.organization.findById(params.id)
+    const organization = await database.organization.findById(id)
     if (!organization) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
     }
@@ -76,7 +80,7 @@ export async function DELETE(
     // TODO: Check if organization has clients before deleting
     // For now, we'll allow deletion but in production you might want to cascade or prevent deletion
 
-    await database.organization.delete(params.id)
+    await database.organization.delete(id)
     
     return NextResponse.json({ success: true })
   } catch (error) {

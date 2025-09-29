@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createContext } from '@/lib/context'
-import { database } from '@/lib/prisma'
+import { database } from '@/lib/database'
 
 export async function GET(request: NextRequest) {
   try {

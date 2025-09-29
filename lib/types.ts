@@ -39,6 +39,7 @@ export interface Survey {
   id: string
   projectId: string
   name: string
+  slug: string
   type: "client-project" | "event-feedback"
   description: string
   questions: Question[]

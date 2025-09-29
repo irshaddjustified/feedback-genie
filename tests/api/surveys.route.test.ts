@@ -5,7 +5,7 @@ jest.mock('@/lib/context', () => ({
   createContext: jest.fn(),
 }))
 
-jest.mock('@/lib/prisma', () => ({
+jest.mock('@/lib/database', () => ({
   database: {
     surveys: {
       findMany: jest.fn(),
@@ -20,7 +20,7 @@ jest.mock('@/lib/prisma', () => ({
 const { createContext } = jest.requireMock('@/lib/context') as {
   createContext: jest.Mock
 }
-const { database } = jest.requireMock('@/lib/prisma') as any
+const { database } = jest.requireMock('@/lib/database') as any
 
 // Helpers to create mock request objects
 function mockGetRequest(url: string): any {

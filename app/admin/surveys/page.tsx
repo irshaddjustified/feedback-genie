@@ -4,12 +4,14 @@ import { Navigation } from "@/components/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Eye, BarChart3, Calendar, ExternalLink } from "lucide-react"
+import { Eye, BarChart3, Calendar, ExternalLink, Edit, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase"
-import { collection, getDocs } from "firebase/firestore"
+import { collection, getDocs, doc, deleteDoc } from "firebase/firestore"
+import QRCodeDisplay from "@/components/QRCodeDisplay"
+import { toast } from "sonner"
 
 export default function SurveysPage() {
   const router = useRouter();
@@ -65,18 +67,44 @@ export default function SurveysPage() {
     }
   };
 
+  const handleDeleteSurvey = async (survey: any) => {
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete "${survey.surveyName}"? This action cannot be undone and will also delete all associated responses.`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      // Delete survey document
+      await deleteDoc(doc(db, "surveys", survey.id));
+
+      // Update local state to remove the deleted survey
+      setSurveys(surveys.filter(s => s.id !== survey.id));
+      setResponses(responses.filter(r => r.surveyId !== survey.id));
+
+      toast.success("Survey deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting survey:", error);
+      toast.error("Failed to delete survey. Please try again.");
+    }
+  };
+
+  const handleEditSurvey = (survey: any) => {
+    router.push(`/admin/surveys/${survey.id}/edit`);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-foreground mb-2">Surveys</h1>
               <p className="text-muted-foreground">Manage and monitor your feedback collection</p>
             </div>
-            <Link href="/builder">
+            <Link href="/admin/surveys/create">
               <Button>Create New Survey</Button>
             </Link>
           </div>
@@ -87,7 +115,7 @@ export default function SurveysPage() {
             <CardContent className="text-center py-12">Loading surveys...</CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {surveys.map((survey) => {
               const stats = getSurveyStats(survey.id as string)
               return (
@@ -108,6 +136,24 @@ export default function SurveysPage() {
                           </div>
                           <Badge variant="outline">{survey.surveyType}</Badge>
                         </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditSurvey(survey)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteSurvey(survey)}
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   </CardHeader>
@@ -130,23 +176,31 @@ export default function SurveysPage() {
                       </div>
 
                       {/* Actions */}
-                      <div className="flex space-x-2 pt-4 border-t">
-                        <Link href={`/survey/${survey.id}`} className="flex-1">
-                          <Button variant="outline" className="w-full bg-transparent">
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
+                      <div className="space-y-2 pt-4 border-t">
+                        <div className="grid grid-cols-2 gap-2">
+                          <Link href={`/admin/survey/${survey.id}`}>
+                            <Button variant="outline" className="w-full bg-transparent">
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Details
+                            </Button>
+                          </Link>
+                          <Link href={`/admin/surveys/${survey.id}/responses`}>
+                            <Button variant="outline" className="w-full bg-transparent">
+                              <BarChart3 className="h-4 w-4 mr-2" />
+                              Responses ({stats.totalResponses})
+                            </Button>
+                          </Link>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <QRCodeDisplay
+                            surveySlug={survey.surveySlug || survey.id}
+                            surveyName={survey.surveyName}
+                          />
+                          <Button className="w-full" onClick={() => handleClick(survey)}>
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            Open Public Link
                           </Button>
-                        </Link>
-                        {/* <Link href={`/survey/${survey.id}/responses`} className="flex-1">
-                          <Button variant="outline" className="w-full bg-transparent">
-                            <BarChart3 className="h-4 w-4 mr-2" />
-                            Analytics
-                          </Button>
-                        </Link> */}
-                        <Button className="w-full flex-1" onClick={() => handleClick(survey)}>
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          Public Link
-                        </Button>
+                        </div>
                       </div>
                     </div>
                   </CardContent>

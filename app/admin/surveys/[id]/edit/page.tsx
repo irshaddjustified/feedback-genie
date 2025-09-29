@@ -1,89 +1,135 @@
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import { Navigation } from "@/components/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
-import { surveyTemplates } from "@/lib/mock-data"
-import { generateSurveyFromPrompt } from "@/lib/ai-service"
-import type { Question, SurveyTemplate } from "@/lib/types"
-import { Plus, Trash2, Sparkles, Save, Eye } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { db } from "@/lib/firebase"
-import { addDoc, collection } from "firebase/firestore"
-import { v4 as uuidv4 } from 'uuid';
+import { useState, useTransition, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { Navigation } from "@/components/navigation";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { generateSurveyFromPrompt } from "@/lib/ai-service";
+import type { Question } from "@/lib/types";
+import { Plus, Trash2, Sparkles, Save, Eye, ArrowLeft, Loader2 } from "lucide-react";
+import { db } from "@/lib/firebase";
+import { doc, getDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { toast } from "sonner";
 
-export default function FormBuilder() {
-  const router = useRouter()
-  const [selectedTemplate, setSelectedTemplate] = useState<SurveyTemplate | null>(null)
-  const [surveyName, setSurveyName] = useState("")
-  const [surveyDescription, setSurveyDescription] = useState("")
-  const [surveySlug, setSurveySlug] = useState("")
-  const [surveyType, setSurveyType] = useState<"client-project" | "event-feedback">("client-project")
-  const [questions, setQuestions] = useState<Question[]>([])
-  const [aiPrompt, setAiPrompt] = useState("")
-  const [isPending, startTransition] = useTransition()
-  const [isSaving, setIsSaving] = useState(false)
-  const [authRequired, setAuthRequired] = useState(false)
+export default function EditSurvey() {
+  const params = useParams();
+  const router = useRouter();
+  const surveyId = params.id as string;
+
+  const [surveyName, setSurveyName] = useState("");
+  const [surveyDescription, setSurveyDescription] = useState("");
+  const [surveySlug, setSurveySlug] = useState("");
+  const [surveyType, setSurveyType] = useState<"client-project" | "event-feedback">("client-project");
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [isPending, startTransition] = useTransition();
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [authRequired, setAuthRequired] = useState(false);
   const [errors, setErrors] = useState<{
-    surveyName?: string
-    surveyDescription?: string
-    surveySlug?: string
-    questions?: Record<string, { text?: string; options?: string }>
-  }>({})
+    surveyName?: string;
+    surveyDescription?: string;
+    surveySlug?: string;
+    questions?: Record<string, { text?: string; options?: string }>;
+  }>({});
+
+  // Load existing survey data
+  useEffect(() => {
+    const loadSurvey = async () => {
+      try {
+        setIsLoading(true);
+
+        // Try to find by document ID first
+        let surveyDoc = await getDoc(doc(db, "surveys", surveyId));
+
+        // If not found by doc ID, try to find by survey ID field
+        if (!surveyDoc.exists()) {
+          const q = query(collection(db, "surveys"), where("id", "==", surveyId));
+          const querySnapshot = await getDocs(q);
+          if (!querySnapshot.empty) {
+            surveyDoc = querySnapshot.docs[0];
+          }
+        }
+
+        if (surveyDoc.exists()) {
+          const data = surveyDoc.data();
+          setSurveyName(data.surveyName || "");
+          setSurveyDescription(data.surveyDescription || "");
+          setSurveySlug(data.surveySlug || data.id || "");
+          setSurveyType(data.surveyType || "client-project");
+          setQuestions(data.questions || []);
+          setAuthRequired(data.authenticationRequired || false);
+        } else {
+          toast.error("Survey not found");
+          router.push("/admin/surveys");
+        }
+      } catch (error) {
+        console.error("Error loading survey:", error);
+        toast.error("Failed to load survey");
+        router.push("/admin/surveys");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (surveyId) {
+      loadSurvey();
+    }
+  }, [surveyId, router]);
 
   const validateForm = () => {
     const newErrors: {
-      surveyName?: string
-      surveyDescription?: string
-      surveySlug?: string
-      questions?: Record<string, { text?: string; options?: string }>
-    } = {}
+      surveyName?: string;
+      surveyDescription?: string;
+      surveySlug?: string;
+      questions?: Record<string, { text?: string; options?: string }>;
+    } = {};
 
     if (!surveyName.trim()) {
-      newErrors.surveyName = "Survey name is required"
+      newErrors.surveyName = "Survey name is required";
     }
 
     if (!surveyDescription.trim()) {
-      newErrors.surveyDescription = "Description is required"
+      newErrors.surveyDescription = "Description is required";
     }
 
     if (!surveySlug.trim()) {
-      newErrors.surveySlug = "URL slug is required"
+      newErrors.surveySlug = "URL slug is required";
     } else if (!/^[a-z0-9-]+$/.test(surveySlug)) {
-      newErrors.surveySlug = "URL slug can only contain lowercase letters, numbers, and hyphens"
+      newErrors.surveySlug = "URL slug can only contain lowercase letters, numbers, and hyphens";
     }
 
-    const qErrors: Record<string, { text?: string; options?: string }> = {}
+    const qErrors: Record<string, { text?: string; options?: string }> = {};
     questions.forEach((q) => {
-      const qe: { text?: string; options?: string } = {}
+      const qe: { text?: string; options?: string } = {};
       if (!q.text?.trim()) {
-        qe.text = "Question text is required"
+        qe.text = "Question text is required";
       }
       if (q.type === "select" || q.type === "radio" || q.type === "checkbox") {
-        const opts = q.options || []
+        const opts = q.options || [];
         if (opts.length === 0) {
-          qe.options = "At least one option is required"
+          qe.options = "At least one option is required";
         }
       }
       if (Object.keys(qe).length > 0) {
-        qErrors[q.id] = qe
+        qErrors[q.id] = qe;
       }
-    })
+    });
 
     if (Object.keys(qErrors).length > 0) {
-      newErrors.questions = qErrors
+      newErrors.questions = qErrors;
     }
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   // Auto-generate slug from survey name
   const generateSlugFromName = (name: string) => {
@@ -93,47 +139,39 @@ export default function FormBuilder() {
       .replace(/\s+/g, '-') // Replace spaces with hyphens
       .replace(/-+/g, '-') // Replace multiple hyphens with single
       .replace(/^-|-$/g, '') // Remove leading/trailing hyphens
-  }
+  };
 
   const formHasBlockingIssues = () => {
-    if (!surveyName.trim()) return true
-    if (!surveyDescription.trim()) return true
-    if (!surveySlug.trim()) return true
-    if (questions.length === 0) return true
+    if (!surveyName.trim()) return true;
+    if (!surveyDescription.trim()) return true;
+    if (!surveySlug.trim()) return true;
+    if (questions.length === 0) return true;
     for (const q of questions) {
-      if (!q.text?.trim()) return true
+      if (!q.text?.trim()) return true;
       if ((q.type === "select" || q.type === "radio" || q.type === "checkbox") && (!q.options || q.options.length === 0)) {
-        return true
+        return true;
       }
     }
-    return false
-  }
-
-  const handleTemplateSelect = (template: SurveyTemplate) => {
-    setSelectedTemplate(template)
-    setSurveyName(template.name)
-    setSurveyDescription(template.description)
-    setSurveySlug(generateSlugFromName(template.name))
-    setSurveyType(template.type)
-    setQuestions(template.questions.map((q, i) => ({ ...q, id: `q${i + 1}` })))
-  }
+    return false;
+  };
 
   const handleAiGenerate = () => {
-    if (!aiPrompt.trim()) return
+    if (!aiPrompt.trim()) return;
 
     startTransition(async () => {
       try {
-        const template = await generateSurveyFromPrompt(aiPrompt, surveyType)
-        setSurveyName(template.name)
-        setSurveyDescription(template.description)
-        setSurveySlug(generateSlugFromName(template.name))
-        setQuestions(template.questions.map((q, i) => ({ ...q, id: `q${i + 1}` })))
-        setAiPrompt("")
+        const template = await generateSurveyFromPrompt(aiPrompt, surveyType);
+        setSurveyName(template.name);
+        setSurveyDescription(template.description);
+        setSurveySlug(generateSlugFromName(template.name));
+        setQuestions(template.questions.map((q, i) => ({ ...q, id: `q${i + 1}` })));
+        setAiPrompt("");
       } catch (error) {
-        console.error("Error generating survey:", error)
+        console.error("Error generating survey:", error);
+        toast.error("Failed to generate survey with AI");
       }
-    })
-  }
+    });
+  };
 
   const addQuestion = () => {
     const newQuestion: Question = {
@@ -142,64 +180,77 @@ export default function FormBuilder() {
       text: "",
       required: false,
       order: questions.length + 1,
-    }
-    setQuestions([...questions, newQuestion])
-  }
+    };
+    setQuestions([...questions, newQuestion]);
+  };
 
   const updateQuestion = (id: string, updates: Partial<Question>) => {
-    setQuestions(questions.map((q) => (q.id === id ? { ...q, ...updates } : q)))
-  }
+    setQuestions(questions.map((q) => (q.id === id ? { ...q, ...updates } : q)));
+  };
 
   const removeQuestion = (id: string) => {
-    setQuestions(questions.filter((q) => q.id !== id))
-  }
+    setQuestions(questions.filter((q) => q.id !== id));
+  };
 
   const handleSave = async () => {
-    // In a real app, this would save to the database
-    const uid = uuidv4();
-
     // Validate before proceeding
-    const ok = validateForm()
+    const ok = validateForm();
     if (!ok) {
-      return
+      return;
     }
 
     setIsSaving(true);
 
     try {
       const surveyData = {
-        id: uid,
         surveyName: surveyName,
         surveyDescription: surveyDescription,
         surveySlug: surveySlug,
         surveyType: surveyType,
         questions: questions,
-        createdAt: new Date(),
         authenticationRequired: authRequired,
-      }
+        updatedAt: new Date(),
+      };
 
-      const docRef = await addDoc(collection(db, "surveys"), surveyData);
-      console.log('Survey saved with ID:', docRef.id);
-      console.log("Saving survey:", { surveyName, surveyDescription, surveyType, questions })
-      
-      // Redirect to survey page after successful save
-      router.push("/surveys");
-      
-      return docRef.id;
+      // Update the document
+      await updateDoc(doc(db, "surveys", surveyId), surveyData);
+
+      toast.success("Survey updated successfully!");
+      router.push("/admin/surveys");
     } catch (error) {
-      console.error('Error saving survey:', error);
-      alert("Error saving survey. Please try again.");
-      throw error;
+      console.error('Error updating survey:', error);
+      toast.error("Error updating survey. Please try again.");
     } finally {
       setIsSaving(false);
     }
-  }
+  };
 
   const handlePreview = () => {
     // Store survey data in localStorage for preview
-    const surveyData = { surveyName, surveyDescription, surveyType, questions, authenticationRequired: authRequired }
-    localStorage.setItem("previewSurvey", JSON.stringify(surveyData))
-    router.push("/preview")
+    const surveyData = {
+      surveyName,
+      surveyDescription,
+      surveyType,
+      questions,
+      authenticationRequired: authRequired,
+      surveySlug
+    };
+    localStorage.setItem("previewSurvey", JSON.stringify(surveyData));
+    router.push("/preview");
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="flex items-center justify-center py-8">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+            <p className="text-muted-foreground">Loading survey...</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -207,9 +258,15 @@ export default function FormBuilder() {
       <Navigation />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2 text-balance">Form Builder</h1>
-          <p className="text-muted-foreground">Create configurable feedback forms with AI assistance</p>
+        <div className="mb-8 flex items-center gap-4">
+          <Button variant="ghost" onClick={() => router.back()}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2 text-balance">Edit Survey</h1>
+            <p className="text-muted-foreground">Update your survey details and questions</p>
+          </div>
         </div>
 
         {/* AI Generation */}
@@ -217,9 +274,9 @@ export default function FormBuilder() {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Sparkles className="h-5 w-5 text-primary" />
-              <span>AI Form Generator</span>
+              <span>AI Survey Generator</span>
             </CardTitle>
-            <CardDescription>Describe what kind of survey you want and let AI create it for you</CardDescription>
+            <CardDescription>Replace current survey with AI-generated content</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -251,34 +308,8 @@ export default function FormBuilder() {
                 />
               </div>
               <Button onClick={handleAiGenerate} disabled={isPending || !aiPrompt.trim()} className="w-full">
-                {isPending ? "Generating..." : "Generate Survey with AI"}
+                {isPending ? "Generating..." : "Replace with AI Generated Survey"}
               </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Templates */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Quick Start Templates</CardTitle>
-            <CardDescription>Choose from pre-built survey templates</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {surveyTemplates.map((template, index) => (
-                <div
-                  key={index}
-                  className="p-4 border rounded-lg cursor-pointer hover:bg-muted transition-colors"
-                  onClick={() => handleTemplateSelect(template)}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-medium">{template.name}</h3>
-                    <Badge variant="outline">{template.type}</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-2 text-pretty">{template.description}</p>
-                  <p className="text-xs text-muted-foreground">{template.questions.length} questions</p>
-                </div>
-              ))}
             </div>
           </CardContent>
         </Card>
@@ -287,7 +318,7 @@ export default function FormBuilder() {
         <Card>
           <CardHeader>
             <CardTitle>Survey Configuration</CardTitle>
-            <CardDescription>Customize your survey details and questions</CardDescription>
+            <CardDescription>Update your survey details and questions</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
@@ -442,7 +473,7 @@ export default function FormBuilder() {
               <div className="flex space-x-4 pt-6 border-t">
                 <Button onClick={handleSave} disabled={formHasBlockingIssues() || isSaving}>
                   <Save className="h-4 w-4 mr-2" />
-                  {isSaving ? "Saving..." : "Save Survey"}
+                  {isSaving ? "Updating..." : "Update Survey"}
                 </Button>
                 <Button variant="outline" onClick={handlePreview} disabled={!surveyName || questions.length === 0}>
                   <Eye className="h-4 w-4 mr-2" />
@@ -454,5 +485,5 @@ export default function FormBuilder() {
         </Card>
       </main>
     </div>
-  )
+  );
 }

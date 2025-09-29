@@ -1,74 +1,64 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { 
-  BarChart3, 
-  FileText, 
-  Settings, 
-  Sparkles, 
-  User, 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  BarChart3,
+  FileText,
+  Settings,
+  Sparkles,
+  User,
   LogOut,
   Plus,
   FolderOpen,
   Users,
   Building,
   Wrench,
-  MessageCircle
-} from "lucide-react"
-import { ThemeToggle } from "@/components/theme-toggle"
+  MessageCircle,
+} from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu"
-import { useAuth } from "@/lib/contexts/AuthContext"
-import { PermissionManager } from "@/lib/permissions"
+} from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/lib/contexts/AuthContext";
+import { PermissionManager } from "@/lib/permissions";
 
 interface NavigationProps {
-  hideAdminElements?: boolean
+  hideAdminElements?: boolean;
 }
 
 export function Navigation({ hideAdminElements = false }: NavigationProps) {
-  const pathname = usePathname()
-  const { 
-    user, 
-    loading, 
+  const pathname = usePathname();
+  const {
+    user,
+    loading,
     signOut,
     isSuperAdmin,
     isAdmin,
     canManageUsers,
     canManageSurveys,
     canViewAnalytics,
-    canAccessAdminPanel
-  } = useAuth()
+    canAccessAdminPanel,
+  } = useAuth();
 
   const publicNavItems = [
     {
       href: "/",
       label: "Home",
       icon: Sparkles,
-      show: true
+      show: true,
     },
-    {
-      href: "/chat",
-      label: "Chat",
-      icon: MessageCircle,
-    },
-    {
-      href: "/chat",
-      label: "Chat",
-      icon: MessageCircle,
-    },
-  ]
+  ];
 
   // Dynamic navigation based on user permissions
   const getNavItems = () => {
-    if (!user || user.isAnonymous || !canAccessAdminPanel) {
-      return publicNavItems
+    if (!user || user.isAnonymous || !canAccessAdminPanel || hideAdminElements) {
+      return publicNavItems;
     }
 
     const navItems = [
@@ -76,9 +66,9 @@ export function Navigation({ hideAdminElements = false }: NavigationProps) {
         href: "/admin/dashboard",
         label: "Dashboard",
         icon: BarChart3,
-        show: true
-      }
-    ]
+        show: true,
+      },
+    ];
 
     // if (canViewAnalytics) {
     //   navItems.push({
@@ -91,11 +81,11 @@ export function Navigation({ hideAdminElements = false }: NavigationProps) {
 
     if (canManageSurveys) {
       navItems.push({
-        href: "/surveys",
+        href: "/admin/surveys",
         label: "Surveys",
         icon: FileText,
-        show: true
-      })
+        show: true,
+      });
     }
 
     if (isAdmin) {
@@ -103,15 +93,15 @@ export function Navigation({ hideAdminElements = false }: NavigationProps) {
         href: "/admin/projects",
         label: "Projects",
         icon: FolderOpen,
-        show: true
-      })
-      
+        show: true,
+      });
+
       navItems.push({
         href: "/admin/clients",
         label: "Clients",
         icon: Building,
-        show: true
-      })
+        show: true,
+      });
     }
 
     if (canManageUsers) {
@@ -119,8 +109,8 @@ export function Navigation({ hideAdminElements = false }: NavigationProps) {
         href: "/admin/users",
         label: "Users",
         icon: Users,
-        show: true
-      })
+        show: true,
+      });
     }
 
     if (isSuperAdmin) {
@@ -128,72 +118,75 @@ export function Navigation({ hideAdminElements = false }: NavigationProps) {
         href: "/admin/system",
         label: "System",
         icon: Wrench,
-        show: true
-      })
+        show: true,
+      });
     }
 
     navItems.push({
       href: "/chat",
       label: "Chat",
       icon: MessageCircle,
-      show: true
-    })
+      show: true,
+    });
 
-    return navItems.filter(item => item.show)
-  }
+    return navItems.filter((item) => item.show);
+  };
 
-  const navItems = getNavItems()
+  const navItems = getNavItems();
 
   const handleSignOut = async () => {
     try {
-      await signOut()
-      window.location.href = '/'
+      await signOut();
+      window.location.href = "/";
     } catch (error) {
-      console.error('Sign out error:', error)
+      console.error("Sign out error:", error);
     }
-  }
+  };
 
   return (
-    <nav className="border-b bg-card">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex items-center space-x-8">
-            <Link href={canAccessAdminPanel ? "/admin/dashboard" : "/"} className="flex items-center space-x-2">
-              <Sparkles className="h-8 w-8 text-primary" />
-              <span className="text-xl font-bold text-foreground">FeedbackGenie</span>
-            </Link>
+    <nav className="border-b bg-card w-full px-6">
+      <div className="mx-auto">
+        <div className="flex justify-between items-center h-16 w-full">
+          <Link
+            href={canAccessAdminPanel ? "/admin/dashboard" : "/"}
+            className="flex items-center space-x-2"
+          >
+            <Sparkles className="h-8 w-8 text-primary" />
+            <span className="text-xl font-bold text-foreground">
+              FeedbackGenie
+            </span>
+          </Link>
 
-            {canAccessAdminPanel && (
-              <div className="flex space-x-4">
-                {navItems.map((item) => {
-                  const Icon = item.icon
-                  return (
-                    <Link key={item.href} href={item.href}>
-                      <Button
-                        variant={pathname === item.href ? "default" : "ghost"}
-                        className="flex items-center space-x-2"
-                        size="sm"
-                      >
-                        <Icon className="h-4 w-4" />
-                        <span>{item.label}</span>
-                      </Button>
-                    </Link>
-                  )
-                })}
-              </div>
-            )}
-          </div>
+          {canAccessAdminPanel && !hideAdminElements && (
+            <div className="flex space-x-4">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link key={item.href} href={item.href}>
+                    <Button
+                      variant={pathname === item.href ? "default" : "ghost"}
+                      className="flex items-center"
+                      size="sm"
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                    </Button>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
 
-          <div className="flex items-center space-x-4">
-            {canManageSurveys && (
-              <Button asChild size="sm">
+          <div className="flex items-center gap-x-1">
+            {canManageSurveys && !hideAdminElements && (
+              <Button asChild size="sm" className="bg-neutral-800">
                 <Link href="/admin/surveys/create">
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus className="h-4 w-4" />
                   Create Survey
                 </Link>
               </Button>
             )}
-            
+
             <ThemeToggle />
 
             {loading ? (
@@ -201,7 +194,11 @@ export function Navigation({ hideAdminElements = false }: NavigationProps) {
             ) : user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center"
+                  >
                     <User className="h-4 w-4" />
                     <span className="hidden sm:inline">
                       {user.displayName || user.email}
@@ -213,35 +210,44 @@ export function Navigation({ hideAdminElements = false }: NavigationProps) {
                     {user.displayName || user.email}
                     {user.role && (
                       <div className="text-xs text-muted-foreground capitalize">
-                        {user.role.replace('_', ' ')}
+                        {user.role.replace("_", " ")}
                       </div>
                     )}
                   </div>
-                  
+
                   {canAccessAdminPanel && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
-                        <Link href="/admin/dashboard" className="flex items-center">
-                          <BarChart3 className="h-4 w-4 mr-2" />
+                        <Link
+                          href="/admin/dashboard"
+                          className="flex items-center"
+                        >
+                          <BarChart3 className="h-4 w-4" />
                           Dashboard
                         </Link>
                       </DropdownMenuItem>
-                      
+
                       {isAdmin && (
                         <DropdownMenuItem asChild>
-                          <Link href="/admin/settings" className="flex items-center">
-                            <Settings className="h-4 w-4 mr-2" />
+                          <Link
+                            href="/admin/settings"
+                            className="flex items-center"
+                          >
+                            <Settings className="h-4 w-4" />
                             Settings
                           </Link>
                         </DropdownMenuItem>
                       )}
                     </>
                   )}
-                  
+
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut} className="flex items-center">
-                    <LogOut className="h-4 w-4 mr-2" />
+                  <DropdownMenuItem
+                    onClick={handleSignOut}
+                    className="flex items-center"
+                  >
+                    <LogOut className="h-4 w-4" />
                     Sign Out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -249,7 +255,7 @@ export function Navigation({ hideAdminElements = false }: NavigationProps) {
             ) : (
               <Button asChild size="sm">
                 <Link href="/auth/login">
-                  <User className="h-4 w-4 mr-2" />
+                  <User className="h-4 w-4" />
                   Login
                 </Link>
               </Button>
@@ -258,5 +264,5 @@ export function Navigation({ hideAdminElements = false }: NavigationProps) {
         </div>
       </div>
     </nav>
-  )
+  );
 }
