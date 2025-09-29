@@ -13,6 +13,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   FileText,
   Users,
   TrendingUp,
@@ -288,66 +295,71 @@ export default function AdminDashboard() {
             {/* Organization Filter */}
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium">Organization:</label>
-              <select
-                value={selectedOrganization}
-                onChange={(e) => setSelectedOrganization(e.target.value)}
-                className="px-3 py-2 border rounded-md bg-background min-w-48"
-              >
-                <option value="all">All Organizations</option>
-                {organizations?.map((org) => (
-                  <option key={org.id} value={org.id}>
-                    {org.name}
-                  </option>
-                ))}
-              </select>
+              <Select value={selectedOrganization} onValueChange={setSelectedOrganization}>
+                <SelectTrigger className="min-w-48">
+                  <SelectValue placeholder="Select organization" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Organizations</SelectItem>
+                  {organizations?.map((org) => (
+                    <SelectItem key={org.id} value={org.id}>
+                      {org.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Client Filter */}
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium">Client:</label>
-              <select
+              <Select
                 value={selectedClient}
-                onChange={(e) => setSelectedClient(e.target.value)}
-                className="px-3 py-2 border rounded-md bg-background min-w-48"
-                disabled={
-                  selectedOrganization !== "all" && filteredClients.length === 0
-                }
+                onValueChange={setSelectedClient}
+                disabled={selectedOrganization !== "all" && filteredClients.length === 0}
               >
-                <option value="all">
-                  {selectedOrganization === "all"
-                    ? "All Clients"
-                    : "All Clients in Organization"}
-                </option>
-                {filteredClients?.map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="min-w-48">
+                  <SelectValue placeholder="Select client" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    {selectedOrganization === "all"
+                      ? "All Clients"
+                      : "All Clients in Organization"}
+                  </SelectItem>
+                  {filteredClients?.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Project Filter */}
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium">Project:</label>
-              <select
+              <Select
                 value={selectedProject}
-                onChange={(e) => setSelectedProject(e.target.value)}
-                className="px-3 py-2 border rounded-md bg-background min-w-48"
-                disabled={
-                  selectedClient !== "all" && filteredProjects.length === 0
-                }
+                onValueChange={setSelectedProject}
+                disabled={selectedClient !== "all" && filteredProjects.length === 0}
               >
-                <option value="all">
-                  {selectedClient === "all"
-                    ? "All Projects"
-                    : "All Projects for Selected Client"}
-                </option>
-                {filteredProjects?.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="min-w-48">
+                  <SelectValue placeholder="Select project" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    {selectedClient === "all"
+                      ? "All Projects"
+                      : "All Projects for Selected Client"}
+                  </SelectItem>
+                  {filteredProjects?.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
